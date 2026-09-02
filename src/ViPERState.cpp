@@ -27,6 +27,7 @@ ViPERState::ViPERState(QObject *parent)
 {
     m_engine->SetSamplingRate(48000);
     initDefaults();
+    syncAll();
     refreshDriverStatus();
 
     m_audioEngine = std::make_unique<AudioEngineLinux>(m_engine.get(), this);
@@ -38,6 +39,13 @@ ViPERState::ViPERState(QObject *parent)
     QTimer::singleShot(250, this, [this]() {
         if (m_audioEngine) m_audioEngine->start();
     });
+}
+
+std::unique_lock<std::mutex> ViPERState::lockEngine() {
+    if (m_audioEngine) {
+        return std::unique_lock<std::mutex>(m_audioEngine->engineMutex());
+    }
+    return std::unique_lock<std::mutex>();
 }
 
 ViPERState::~ViPERState() {
@@ -543,6 +551,8 @@ void ViPERState::onPropertyChanged(const char *propName) {
 
 // Typed sync methods - zero console spam
 void ViPERState::syncMasterLimiter() {
+    if (!m_engine) return;
+    auto lock = lockEngine();
     viper::MasterLimiterParams p;
     p.threshold = static_cast<float>(m_limiter) / 100.0f;
     p.output_volume = static_cast<float>(m_outputVolume) / 100.0f;
@@ -551,6 +561,8 @@ void ViPERState::syncMasterLimiter() {
 }
 
 void ViPERState::syncEqualizer() {
+    if (!m_engine) return;
+    auto lock = lockEngine();
     viper::EqualizerParams p;
     p.enable = m_isEnabled && m_equalizerEnabled;
     p.band_count = static_cast<uint32_t>(m_equalizerBandCount);

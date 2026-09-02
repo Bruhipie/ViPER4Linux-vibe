@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QVariantList>
 #include <memory>
+#include <mutex>
 #include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
 
 #define VIPER_PROP(type, name, setter, default_val) \
@@ -283,6 +284,7 @@ private:
     void syncLufs();
     void syncPsychoBass();
     void syncAll();
+    std::unique_lock<std::mutex> lockEngine();
 
     std::unique_ptr<ViPER> m_engine;
     std::unique_ptr<class AudioEngineLinux> m_audioEngine;

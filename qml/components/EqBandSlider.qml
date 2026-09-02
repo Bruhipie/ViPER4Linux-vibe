@@ -10,6 +10,13 @@ Item {
     width: 32
     height: 140
 
+    // Keep slider in sync with external changes (presets, Flat button, graph drag)
+    onLevelChanged: {
+        if (!vSlider.pressed && Math.abs(vSlider.value - root.level) > 0.01) {
+            vSlider.value = root.level
+        }
+    }
+
     Column {
         anchors.fill: parent
         spacing: 4
@@ -17,11 +24,14 @@ Item {
         // dB value top
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: root.level > 0 ? ("+" + root.level.toFixed(1)) : root.level.toFixed(1)
+            text: {
+                var val = vSlider.pressed ? (Math.round(vSlider.value * 10.0) / 10.0) : root.level
+                return (val > 0 ? ("+" + val.toFixed(1)) : val.toFixed(1))
+            }
             font.pixelSize: 10
             font.family: "Monospace"
-            color: root.level !== 0.0 ? "#00D2B4" : "#6B7280"
-            font.bold: root.level !== 0.0
+            color: (vSlider.pressed ? (Math.abs(vSlider.value) > 0.05) : (Math.abs(root.level) > 0.05)) ? "#00D2B4" : "#6B7280"
+            font.bold: (vSlider.pressed ? (Math.abs(vSlider.value) > 0.05) : (Math.abs(root.level) > 0.05))
         }
 
         // Vertical Slider
@@ -37,10 +47,7 @@ Item {
 
             onMoved: {
                 var rounded = Math.round(vSlider.value * 10.0) / 10.0
-                if (root.level !== rounded) {
-                    root.level = rounded
-                    root.bandMoved(rounded)
-                }
+                root.bandMoved(rounded)
             }
 
             background: Rectangle {
@@ -51,10 +58,21 @@ Item {
                 radius: 1.5
                 color: "#252731"
 
+                // Center zero line indicator (0 dB)
                 Rectangle {
-                    y: vSlider.visualPosition * parent.height
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: Math.round(parent.height / 2)
+                    width: 7
+                    height: 1
+                    color: "#4B5563"
+                }
+
+                // Bipolar fill from 0 dB center to current value
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
                     width: parent.width
-                    height: (1.0 - vSlider.visualPosition) * parent.height
+                    y: vSlider.visualPosition < 0.5 ? (vSlider.visualPosition * parent.height) : (parent.height / 2)
+                    height: Math.abs(0.5 - vSlider.visualPosition) * parent.height
                     radius: 1.5
                     color: "#00D2B4"
                 }

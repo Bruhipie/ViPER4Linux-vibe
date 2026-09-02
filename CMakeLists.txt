@@ -39,6 +39,7 @@ qt_add_qml_module(ViPER4LinuxApp
 add_subdirectory(../ViPER4Mac/ViPERDSP ViPERDSP)
 # Force-include the missing headers into ViPERDSP compilation
 target_compile_options(ViPERDSP PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/force_includes.h)
+target_compile_options(ViPER4LinuxApp PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/force_includes.h)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PIPEWIRE REQUIRED IMPORTED_TARGET libpipewire-0.3 libspa-0.2)

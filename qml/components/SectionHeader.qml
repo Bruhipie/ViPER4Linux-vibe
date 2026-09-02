@@ -18,7 +18,6 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         checked: root.checked
         onToggled: function(val) {
-            root.checked = val
             root.toggled(val)
             if (val && !root.expanded) {
                 root.expanded = true

@@ -399,6 +399,7 @@ ApplicationWindow {
                                             model: viperState.equalizerPresetNames
                                             width: 130
                                             height: 26
+                                            currentIndex: model ? model.indexOf(viperState.equalizerPresetName) : 0
                                             onActivated: function(index) {
                                                 viperState.applyEqPreset(currentText)
                                             }
@@ -417,6 +418,10 @@ ApplicationWindow {
                                         width: parent.width
                                         height: 90
                                         bands: viperState.equalizerBands
+                                        bandCount: viperState.equalizerBandCount
+                                        onBandLevelChanged: function(band, level) {
+                                            viperState.setEqBandLevel(band, level)
+                                        }
                                     }
 
                                     Flickable {
