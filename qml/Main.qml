@@ -342,7 +342,7 @@ ApplicationWindow {
                     // FIR Equalizer Card
                     Rectangle {
                         width: parent.width
-                        height: eqHeader.height + (eqHeader.expanded ? eqContent.implicitHeight + 16 : 0)
+                        height: eqHeader.expanded ? (eqHeader.height + eqContent.implicitHeight + 20) : eqHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -351,22 +351,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: eqHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: eqHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "FIR Equalizer"
                                 checked: viperState.equalizerEnabled
                                 onToggled: function(v) { viperState.equalizerEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: eqContent
-                                expanded: eqHeader.expanded
+                        AnimatedSection {
+                            id: eqContent
+                            anchors.top: eqHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: eqHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -437,7 +443,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
                 }
 
@@ -452,7 +457,7 @@ ApplicationWindow {
                     // ViPER Bass Card
                     Rectangle {
                         width: parent.width
-                        height: bassHeader.height + (bassHeader.expanded ? bassContent.implicitHeight + 16 : 0)
+                        height: bassHeader.expanded ? (bassHeader.height + bassContent.implicitHeight + 20) : bassHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -460,22 +465,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: bassHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: bassHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "ViPER Bass"
                                 checked: viperState.viperBassEnabled
                                 onToggled: function(v) { viperState.viperBassEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: bassContent
-                                expanded: bassHeader.expanded
+                        AnimatedSection {
+                            id: bassContent
+                            anchors.top: bassHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: bassHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -509,13 +520,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // ViPER Bass Mono Card
                     Rectangle {
                         width: parent.width
-                        height: bassMonoHeader.height + (bassMonoHeader.expanded ? bassMonoContent.implicitHeight + 16 : 0)
+                        height: bassMonoHeader.expanded ? (bassMonoHeader.height + bassMonoContent.implicitHeight + 20) : bassMonoHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -523,22 +533,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: bassMonoHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: bassMonoHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "ViPER Bass Mono"
                                 checked: viperState.viperBassMonoEnabled
                                 onToggled: function(v) { viperState.viperBassMonoEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: bassMonoContent
-                                expanded: bassMonoHeader.expanded
+                        AnimatedSection {
+                            id: bassMonoContent
+                            anchors.top: bassMonoHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: bassMonoHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -572,13 +588,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Psychoacoustic Bass Card
                     Rectangle {
                         width: parent.width
-                        height: psychoBassHeader.height + (psychoBassHeader.expanded ? psychoBassContent.implicitHeight + 16 : 0)
+                        height: psychoBassHeader.expanded ? (psychoBassHeader.height + psychoBassContent.implicitHeight + 20) : psychoBassHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -586,22 +601,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: psychoBassHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: psychoBassHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Psychoacoustic Bass"
                                 checked: viperState.psychoBassEnabled
                                 onToggled: function(v) { viperState.psychoBassEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: psychoBassContent
-                                expanded: psychoBassHeader.expanded
+                        AnimatedSection {
+                            id: psychoBassContent
+                            anchors.top: psychoBassHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: psychoBassHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -644,13 +665,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // ViPER Clarity Card
                     Rectangle {
                         width: parent.width
-                        height: clarityHeader.height + (clarityHeader.expanded ? clarityContent.implicitHeight + 16 : 0)
+                        height: clarityHeader.expanded ? (clarityHeader.height + clarityContent.implicitHeight + 20) : clarityHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -658,22 +678,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: clarityHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: clarityHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "ViPER Clarity"
                                 checked: viperState.viperClarityEnabled
                                 onToggled: function(v) { viperState.viperClarityEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: clarityContent
-                                expanded: clarityHeader.expanded
+                        AnimatedSection {
+                            id: clarityContent
+                            anchors.top: clarityHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: clarityHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -698,7 +724,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
                 }
 
@@ -713,7 +738,7 @@ ApplicationWindow {
                     // Field Surround Card
                     Rectangle {
                         width: parent.width
-                        height: fieldSurroundHeader.height + (fieldSurroundHeader.expanded ? fieldSurroundContent.implicitHeight + 16 : 0)
+                        height: fieldSurroundHeader.expanded ? (fieldSurroundHeader.height + fieldSurroundContent.implicitHeight + 20) : fieldSurroundHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -721,22 +746,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: fieldSurroundHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: fieldSurroundHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Field Surround"
                                 checked: viperState.fieldSurroundEnabled
                                 onToggled: function(v) { viperState.fieldSurroundEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: fieldSurroundContent
-                                expanded: fieldSurroundHeader.expanded
+                        AnimatedSection {
+                            id: fieldSurroundContent
+                            anchors.top: fieldSurroundHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: fieldSurroundHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -770,13 +801,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Differential Surround Card
                     Rectangle {
                         width: parent.width
-                        height: diffSurroundHeader.height + (diffSurroundHeader.expanded ? diffSurroundContent.implicitHeight + 16 : 0)
+                        height: diffSurroundHeader.expanded ? (diffSurroundHeader.height + diffSurroundContent.implicitHeight + 20) : diffSurroundHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -784,22 +814,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: diffSurroundHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: diffSurroundHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Differential Surround"
                                 checked: viperState.diffSurroundEnabled
                                 onToggled: function(v) { viperState.diffSurroundEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: diffSurroundContent
-                                expanded: diffSurroundHeader.expanded
+                        AnimatedSection {
+                            id: diffSurroundContent
+                            anchors.top: diffSurroundHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: diffSurroundHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -815,13 +851,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Headphone Surround+ (VHE) Card
                     Rectangle {
                         width: parent.width
-                        height: vheHeader.height + (vheHeader.expanded ? vheContent.implicitHeight + 16 : 0)
+                        height: vheHeader.expanded ? (vheHeader.height + vheContent.implicitHeight + 20) : vheHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -829,22 +864,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: vheHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: vheHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Headphone Surround+ (VHE)"
                                 checked: viperState.vheEnabled
                                 onToggled: function(v) { viperState.vheEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: vheContent
-                                expanded: vheHeader.expanded
+                        AnimatedSection {
+                            id: vheContent
+                            anchors.top: vheHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: vheHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -860,13 +901,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Reverberation Card
                     Rectangle {
                         width: parent.width
-                        height: reverbHeader.height + (reverbHeader.expanded ? reverbContent.implicitHeight + 16 : 0)
+                        height: reverbHeader.expanded ? (reverbHeader.height + reverbContent.implicitHeight + 20) : reverbHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -874,22 +914,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: reverbHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: reverbHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Reverberation"
                                 checked: viperState.reverberationEnabled
                                 onToggled: function(v) { viperState.reverberationEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: reverbContent
-                                expanded: reverbHeader.expanded
+                        AnimatedSection {
+                            id: reverbContent
+                            anchors.top: reverbHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: reverbHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -941,13 +987,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Stereo Imager Card
                     Rectangle {
                         width: parent.width
-                        height: stereoImgHeader.height + (stereoImgHeader.expanded ? stereoImgContent.implicitHeight + 16 : 0)
+                        height: stereoImgHeader.expanded ? (stereoImgHeader.height + stereoImgContent.implicitHeight + 20) : stereoImgHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -955,22 +1000,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: stereoImgHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: stereoImgHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Stereo Imager"
                                 checked: viperState.stereoImgEnabled
                                 onToggled: function(v) { viperState.stereoImgEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: stereoImgContent
-                                expanded: stereoImgHeader.expanded
+                        AnimatedSection {
+                            id: stereoImgContent
+                            anchors.top: stereoImgHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: stereoImgHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1024,7 +1075,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
                 }
 
@@ -1039,7 +1089,7 @@ ApplicationWindow {
                     // Convolver Card
                     Rectangle {
                         width: parent.width
-                        height: convolverHeader.height + (convolverHeader.expanded ? convolverContent.implicitHeight + 16 : 0)
+                        height: convolverHeader.expanded ? (convolverHeader.height + convolverContent.implicitHeight + 20) : convolverHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1047,22 +1097,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: convolverHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: convolverHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Convolver"
                                 checked: viperState.convolutionEnabled
                                 onToggled: function(v) { viperState.convolutionEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: convolverContent
-                                expanded: convolverHeader.expanded
+                        AnimatedSection {
+                            id: convolverContent
+                            anchors.top: convolverHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: convolverHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1122,13 +1178,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // ViPER-DDC Card
                     Rectangle {
                         width: parent.width
-                        height: ddcHeader.height + (ddcHeader.expanded ? ddcContent.implicitHeight + 16 : 0)
+                        height: ddcHeader.expanded ? (ddcHeader.height + ddcContent.implicitHeight + 20) : ddcHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1136,22 +1191,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: ddcHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: ddcHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "ViPER-DDC"
                                 checked: viperState.ddcEnabled
                                 onToggled: function(v) { viperState.ddcEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: ddcContent
-                                expanded: ddcHeader.expanded
+                        AnimatedSection {
+                            id: ddcContent
+                            anchors.top: ddcHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: ddcHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1202,13 +1263,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Speaker Correction Card
                     Rectangle {
                         width: parent.width
-                        height: spkCorrHeader.height + (spkCorrHeader.expanded ? spkCorrContent.implicitHeight + 16 : 0)
+                        height: spkCorrHeader.expanded ? (spkCorrHeader.height + spkCorrContent.implicitHeight + 20) : spkCorrHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1216,22 +1276,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: spkCorrHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: spkCorrHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Speaker Correction"
                                 checked: viperState.speakerCorrectionEnabled
                                 onToggled: function(v) { viperState.speakerCorrectionEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: spkCorrContent
-                                expanded: spkCorrHeader.expanded
+                        AnimatedSection {
+                            id: spkCorrContent
+                            anchors.top: spkCorrHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: spkCorrHeader.expanded
 
                                 Text {
                                     text: "Enables hardware speaker acoustic frequency correction."
@@ -1239,13 +1305,12 @@ ApplicationWindow {
                                     color: "#9AA0AD"
                                 }
                             }
-                        }
                     }
 
                     // Cure Card
                     Rectangle {
                         width: parent.width
-                        height: cureHeader.height + (cureHeader.expanded ? cureContent.implicitHeight + 16 : 0)
+                        height: cureHeader.expanded ? (cureHeader.height + cureContent.implicitHeight + 20) : cureHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1253,22 +1318,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: cureHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: cureHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Cure (Hearing Protection)"
                                 checked: viperState.cureEnabled
                                 onToggled: function(v) { viperState.cureEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: cureContent
-                                expanded: cureHeader.expanded
+                        AnimatedSection {
+                            id: cureContent
+                            anchors.top: cureHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: cureHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1284,7 +1355,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
                 }
 
@@ -1299,7 +1369,7 @@ ApplicationWindow {
                     // Dynamic System Card
                     Rectangle {
                         width: parent.width
-                        height: dsHeader.height + (dsHeader.expanded ? dsContent.implicitHeight + 16 : 0)
+                        height: dsHeader.expanded ? (dsHeader.height + dsContent.implicitHeight + 20) : dsHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1307,22 +1377,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: dsHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: dsHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Dynamic System"
                                 checked: viperState.dynamicSystemEnabled
                                 onToggled: function(v) { viperState.dynamicSystemEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: dsContent
-                                expanded: dsHeader.expanded
+                        AnimatedSection {
+                            id: dsContent
+                            anchors.top: dsHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: dsHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1346,13 +1422,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Tube Simulator Card
                     Rectangle {
                         width: parent.width
-                        height: tubeHeader.height + (tubeHeader.expanded ? tubeContent.implicitHeight + 16 : 0)
+                        height: tubeHeader.expanded ? (tubeHeader.height + tubeContent.implicitHeight + 20) : tubeHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1360,22 +1435,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: tubeHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: tubeHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Tube Simulator (6J1 Vacuum Tube)"
                                 checked: viperState.tubeSimulatorEnabled
                                 onToggled: function(v) { viperState.tubeSimulatorEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: tubeContent
-                                expanded: tubeHeader.expanded
+                        AnimatedSection {
+                            id: tubeContent
+                            anchors.top: tubeHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: tubeHeader.expanded
 
                                 Text {
                                     text: "Simulates warm harmonic vacuum tube characteristics (6J1 class-A)."
@@ -1383,13 +1464,12 @@ ApplicationWindow {
                                     color: "#9AA0AD"
                                 }
                             }
-                        }
                     }
 
                     // AnalogX Card
                     Rectangle {
                         width: parent.width
-                        height: analogXHeader.height + (analogXHeader.expanded ? analogXContent.implicitHeight + 16 : 0)
+                        height: analogXHeader.expanded ? (analogXHeader.height + analogXContent.implicitHeight + 20) : analogXHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1397,22 +1477,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: analogXHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: analogXHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "AnalogX (Harmonic Enhancement)"
                                 checked: viperState.analogXEnabled
                                 onToggled: function(v) { viperState.analogXEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: analogXContent
-                                expanded: analogXHeader.expanded
+                        AnimatedSection {
+                            id: analogXContent
+                            anchors.top: analogXHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: analogXHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1427,13 +1513,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Spectrum Extension Card
                     Rectangle {
                         width: parent.width
-                        height: specExtHeader.height + (specExtHeader.expanded ? specExtContent.implicitHeight + 16 : 0)
+                        height: specExtHeader.expanded ? (specExtHeader.height + specExtContent.implicitHeight + 20) : specExtHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1441,22 +1526,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: specExtHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: specExtHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Spectrum Extension"
                                 checked: viperState.spectrumExtensionEnabled
                                 onToggled: function(v) { viperState.spectrumExtensionEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: specExtContent
-                                expanded: specExtHeader.expanded
+                        AnimatedSection {
+                            id: specExtContent
+                            anchors.top: specExtHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: specExtHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1481,13 +1572,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // FET Compressor Card
                     Rectangle {
                         width: parent.width
-                        height: fetHeader.height + (fetHeader.expanded ? fetContent.implicitHeight + 16 : 0)
+                        height: fetHeader.expanded ? (fetHeader.height + fetContent.implicitHeight + 20) : fetHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1495,22 +1585,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: fetHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: fetHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "FET Compressor"
                                 checked: viperState.fetCompressorEnabled
                                 onToggled: function(v) { viperState.fetCompressorEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: fetContent
-                                expanded: fetHeader.expanded
+                        AnimatedSection {
+                            id: fetContent
+                            anchors.top: fetHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: fetHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1586,13 +1682,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Playback Gain Control Card
                     Rectangle {
                         width: parent.width
-                        height: playbackGainHeader.height + (playbackGainHeader.expanded ? playbackGainContent.implicitHeight + 16 : 0)
+                        height: playbackGainHeader.expanded ? (playbackGainHeader.height + playbackGainContent.implicitHeight + 20) : playbackGainHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1600,22 +1695,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: playbackGainHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: playbackGainHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Playback Gain Control"
                                 checked: viperState.playbackGainEnabled
                                 onToggled: function(v) { viperState.playbackGainEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: playbackGainContent
-                                expanded: playbackGainHeader.expanded
+                        AnimatedSection {
+                            id: playbackGainContent
+                            anchors.top: playbackGainHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: playbackGainHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1649,13 +1750,12 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
 
                     // Auditory System Protection (LUFS) Card
                     Rectangle {
                         width: parent.width
-                        height: lufsHeader.height + (lufsHeader.expanded ? lufsContent.implicitHeight + 16 : 0)
+                        height: lufsHeader.expanded ? (lufsHeader.height + lufsContent.implicitHeight + 20) : lufsHeader.height
                         radius: 8
                         color: "#18191E"
                         border.color: "#252731"
@@ -1663,22 +1763,28 @@ ApplicationWindow {
                         clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
 
-                            SectionHeader {
-                                id: lufsHeader
-                                width: parent.width
+                        SectionHeader {
+                            id: lufsHeader
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
                                 title: "Auditory System Protection (LUFS)"
                                 checked: viperState.lufsEnabled
                                 onToggled: function(v) { viperState.lufsEnabled = v }
                             }
 
-                            AnimatedSection {
-                                id: lufsContent
-                                expanded: lufsHeader.expanded
+                        AnimatedSection {
+                            id: lufsContent
+                            anchors.top: lufsHeader.bottom
+                            anchors.topMargin: 8
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            expanded: lufsHeader.expanded
 
                                 Column {
                                     width: parent.width
@@ -1693,7 +1799,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                        }
                     }
                 }
             }
