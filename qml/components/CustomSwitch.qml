@@ -21,12 +21,12 @@ Item {
             height: 20
             radius: 10
             anchors.verticalCenter: parent.verticalCenter
-            color: root.checked ? "#A88CFA" : "#282638"
-            border.color: root.checked ? "#B99FFF" : "#3C3952"
+            color: root.checked ? "#00D2B4" : "#262832"
+            border.color: root.checked ? "#14E8C9" : "#363A46"
             border.width: 1
 
             Behavior on color {
-                ColorAnimation { duration: 180; easing.type: Easing.OutQuad }
+                ColorAnimation { duration: 160; easing.type: Easing.OutQuad }
             }
 
             Rectangle {
@@ -39,7 +39,7 @@ Item {
                 color: "#FFFFFF"
 
                 Behavior on x {
-                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: 160; easing.type: Easing.OutCubic }
                 }
             }
 
@@ -57,19 +57,10 @@ Item {
             id: label
             visible: root.title.length > 0
             text: root.title
-            color: root.checked ? "#DFD4FF" : "#8A879E"
-            font.pixelSize: 13
-            font.weight: root.checked ? Font.DemiBold : Font.Normal
+            color: root.checked ? "#F1F3F7" : "#8B92A2"
+            font.pixelSize: 12
+            font.weight: root.checked ? Font.Medium : Font.Normal
             anchors.verticalCenter: parent.verticalCenter
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    root.checked = !root.checked
-                    root.toggled(root.checked)
-                }
-            }
         }
     }
 }

@@ -20,7 +20,8 @@ Item {
             text: root.level > 0 ? ("+" + root.level.toFixed(1)) : root.level.toFixed(1)
             font.pixelSize: 10
             font.family: "Monospace"
-            color: root.level !== 0.0 ? "#DFD4FF" : "#6E6B80"
+            color: root.level !== 0.0 ? "#00D2B4" : "#6B7280"
+            font.bold: root.level !== 0.0
         }
 
         // Vertical Slider
@@ -48,14 +49,14 @@ Item {
                 width: 3
                 height: vSlider.availableHeight
                 radius: 1.5
-                color: "#222030"
+                color: "#252731"
 
                 Rectangle {
                     y: vSlider.visualPosition * parent.height
                     width: parent.width
                     height: (1.0 - vSlider.visualPosition) * parent.height
                     radius: 1.5
-                    color: "#A88CFA"
+                    color: "#00D2B4"
                 }
             }
 
@@ -65,8 +66,8 @@ Item {
                 width: 14
                 height: 10
                 radius: 3
-                color: vSlider.pressed ? "#FFFFFF" : "#D4C7FF"
-                border.color: "#A88CFA"
+                color: vSlider.pressed ? "#FFFFFF" : (vSlider.hovered ? "#33E6CB" : "#00D2B4")
+                border.color: "#111215"
                 border.width: 1
             }
         }
@@ -76,7 +77,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.label
             font.pixelSize: 10
-            color: "#8E8B9E"
+            color: "#8B92A2"
         }
     }
 }

@@ -14,8 +14,8 @@ Item {
         id: bg
         anchors.fill: parent
         radius: 6
-        color: "#13111F"
-        border.color: "#28253B"
+        color: "#141519"
+        border.color: "#282A33"
         border.width: 1
 
         // Active indicator pill
@@ -26,8 +26,8 @@ Item {
             y: 2
             x: root.model.length > 0 ? (root.currentIndex * (bg.width / root.model.length)) + 2 : 2
             radius: 5
-            color: "#342F4D"
-            border.color: "#A88CFA"
+            color: "#1B2F2A"
+            border.color: "#00D2B4"
             border.width: 1
 
             Behavior on x {
@@ -51,7 +51,7 @@ Item {
                         text: modelData
                         font.pixelSize: 11
                         font.weight: root.currentIndex === index ? Font.DemiBold : Font.Normal
-                        color: root.currentIndex === index ? "#FFFFFF" : "#7E7B92"
+                        color: root.currentIndex === index ? "#00D2B4" : "#8B92A2"
                     }
 
                     MouseArea {

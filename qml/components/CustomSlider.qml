@@ -21,7 +21,7 @@ Item {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         text: root.title
-        color: "#8E8B9E"
+        color: "#9AA0AD"
         font.pixelSize: 12
         width: 85
         elide: Text.ElideRight
@@ -32,11 +32,11 @@ Item {
         id: badge
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        width: 62
+        width: 64
         height: 22
         radius: 4
-        color: editInput.activeFocus ? "#1C182E" : "#13111F"
-        border.color: editInput.activeFocus ? "#A88CFA" : "#28253B"
+        color: editInput.activeFocus ? "#1C2028" : "#141519"
+        border.color: editInput.activeFocus ? "#00D2B4" : "#282A33"
         border.width: 1
 
         Text {
@@ -44,7 +44,7 @@ Item {
             anchors.centerIn: parent
             visible: !editInput.activeFocus
             text: root.displayFn(root.value)
-            color: "#DFD4FF"
+            color: "#F1F3F7"
             font.pixelSize: 11
             font.family: "Monospace"
             font.bold: true
@@ -66,7 +66,6 @@ Item {
             onAccepted: {
                 var num = parseFloat(text)
                 if (!isNaN(num)) {
-                    // Check if value is dB or raw
                     var targetVal = Math.round(num)
                     if (targetVal < root.from) targetVal = root.from
                     if (targetVal > root.to) targetVal = root.to
@@ -124,17 +123,13 @@ Item {
             width: slider.availableWidth
             height: 4
             radius: 2
-            color: "#222030"
+            color: "#252731"
 
             Rectangle {
                 width: Math.max(0, Math.min(parent.width, slider.visualPosition * parent.width))
                 height: parent.height
                 radius: 2
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: "#8E6BF5" }
-                    GradientStop { position: 1.0; color: "#B99FFF" }
-                }
+                color: "#00D2B4" // Solid pro studio accent, no gradient
             }
         }
 
@@ -143,17 +138,14 @@ Item {
             y: slider.topPadding + slider.availableHeight / 2 - height / 2
             implicitWidth: 14
             implicitHeight: 14
-            width: 14
-            height: 14
             radius: 7
-            color: slider.pressed ? "#FFFFFF" : "#E4DCFF"
-            border.color: "#A88CFA"
+            color: slider.pressed ? "#FFFFFF" : (slider.hovered ? "#33E6CB" : "#00D2B4")
+            border.color: "#111215"
             border.width: 2
 
-            Behavior on scale {
-                NumberAnimation { duration: 100 }
+            Behavior on color {
+                ColorAnimation { duration: 100 }
             }
-            scale: slider.pressed ? 1.2 : 1.0
         }
     }
 }

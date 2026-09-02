@@ -23,12 +23,12 @@ Item {
     // Modal Card
     Rectangle {
         id: card
-        width: 330
+        width: 340
         height: 380
         anchors.centerIn: parent
         radius: 12
-        color: "#161424"
-        border.color: "#342F4D"
+        color: "#18191E"
+        border.color: "#282A33"
         border.width: 1
 
         MouseArea {
@@ -47,25 +47,25 @@ Item {
 
                 Text {
                     text: "Engine & Driver Status"
-                    color: "#C2ABFF"
+                    color: "#F1F3F7"
                     font.pixelSize: 15
                     font.bold: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
-                Item { width: 40 }
+                Item { width: Math.max(10, parent.width - 230) }
 
                 Rectangle {
-                    width: 22
-                    height: 22
-                    radius: 11
-                    color: "#252236"
+                    width: 24
+                    height: 24
+                    radius: 12
+                    color: "#22242D"
                     anchors.verticalCenter: parent.verticalCenter
 
                     Text {
                         anchors.centerIn: parent
                         text: "✕"
-                        color: "#9C98B3"
+                        color: "#9AA0AD"
                         font.pixelSize: 11
                     }
 
@@ -80,7 +80,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: 1
-                color: "#28253B"
+                color: "#252731"
             }
 
             // Status Rows
@@ -88,79 +88,72 @@ Item {
                 width: parent.width
                 spacing: 9
 
-                // Row 1: App Version
                 Row {
                     width: parent.width
-                    Text { text: "App Version"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
-                    Text { text: "1.0.0 (Linux x86_64)"; color: "#DFD4FF"; font.pixelSize: 12; font.family: "Monospace" }
+                    Text { text: "App Version"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
+                    Text { text: "1.0.0 (Linux x86_64)"; color: "#F1F3F7"; font.pixelSize: 12; font.family: "Monospace" }
                 }
 
-                // Row 2: DSP Engine
                 Row {
                     width: parent.width
-                    Text { text: "DSP Engine"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
-                    Text { text: "ViPERDSP Core v" + viperState.dspVersion; color: "#DFD4FF"; font.pixelSize: 12; font.family: "Monospace" }
+                    Text { text: "DSP Engine"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
+                    Text { text: "ViPERDSP Core v" + viperState.dspVersion; color: "#F1F3F7"; font.pixelSize: 12; font.family: "Monospace" }
                 }
 
-                // Row 3: Audio Server
                 Row {
                     width: parent.width
-                    Text { text: "Audio Server"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
+                    Text { text: "Audio Server"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 7; height: 7; radius: 3.5; color: "#34D399"
+                            width: 7; height: 7; radius: 3.5; color: "#00D2B4"
                             anchors.verticalCenter: parent.verticalCenter
                         }
-                        Text { text: viperState.audioServerName; color: "#34D399"; font.pixelSize: 12; font.bold: true }
+                        Text { text: viperState.audioServerName; color: "#00D2B4"; font.pixelSize: 12; font.bold: true }
                     }
                 }
 
-                // Row 4: Driver Status
                 Row {
                     width: parent.width
-                    Text { text: "Driver Status"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
+                    Text { text: "Driver Status"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 7; height: 7; radius: 3.5; color: "#34D399"
+                            width: 7; height: 7; radius: 3.5; color: "#00D2B4"
                             anchors.verticalCenter: parent.verticalCenter
                         }
-                        Text { text: viperState.driverStatusText; color: "#DFD4FF"; font.pixelSize: 12 }
+                        Text { text: viperState.driverStatusText; color: "#F1F3F7"; font.pixelSize: 12 }
                     }
                 }
 
-                // Row 5: Sampling Rate
                 Row {
                     width: parent.width
-                    Text { text: "Sample Rate"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
-                    Text { text: viperState.currentSampleRate + " Hz"; color: "#DFD4FF"; font.pixelSize: 12; font.family: "Monospace" }
+                    Text { text: "Sample Rate"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
+                    Text { text: viperState.currentSampleRate + " Hz"; color: "#F1F3F7"; font.pixelSize: 12; font.family: "Monospace" }
                 }
 
-                // Row 6: Active Output Device
                 Row {
                     width: parent.width
-                    Text { text: "Output Device"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
+                    Text { text: "Output Device"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
                     Text {
                         text: viperState.outputDeviceName
-                        color: "#DFD4FF"
+                        color: "#F1F3F7"
                         font.pixelSize: 11
                         width: parent.width - 110
                         elide: Text.ElideMiddle
                     }
                 }
 
-                // Row 7: Processing State
                 Row {
                     width: parent.width
-                    Text { text: "Streaming"; color: "#7E7B92"; font.pixelSize: 12; width: 110 }
+                    Text { text: "Streaming"; color: "#8B92A2"; font.pixelSize: 12; width: 110 }
                     Row {
                         spacing: 6
                         Rectangle {
-                            width: 7; height: 7; radius: 3.5; color: viperState.isEnabled ? "#34D399" : "#F59E0B"
+                            width: 7; height: 7; radius: 3.5; color: viperState.isEnabled ? "#00D2B4" : "#F59E0B"
                             anchors.verticalCenter: parent.verticalCenter
                         }
-                        Text { text: viperState.isEnabled ? "Active" : "Bypassed"; color: viperState.isEnabled ? "#34D399" : "#F59E0B"; font.pixelSize: 12; font.bold: true }
+                        Text { text: viperState.isEnabled ? "Active" : "Bypassed"; color: viperState.isEnabled ? "#00D2B4" : "#F59E0B"; font.pixelSize: 12; font.bold: true }
                     }
                 }
             }
@@ -168,7 +161,7 @@ Item {
             Rectangle {
                 width: parent.width
                 height: 1
-                color: "#28253B"
+                color: "#252731"
             }
 
             // Buttons
@@ -180,13 +173,13 @@ Item {
                     width: (parent.width - 10) / 2
                     height: 32
                     radius: 6
-                    color: "#252236"
-                    border.color: "#3A3654"
+                    color: "#22242D"
+                    border.color: "#313540"
 
                     Text {
                         anchors.centerIn: parent
                         text: "Refresh Status"
-                        color: "#DFD4FF"
+                        color: "#F1F3F7"
                         font.pixelSize: 12
                     }
 
@@ -201,13 +194,13 @@ Item {
                     width: (parent.width - 10) / 2
                     height: 32
                     radius: 6
-                    color: "#463973"
-                    border.color: "#A88CFA"
+                    color: "#163830"
+                    border.color: "#00D2B4"
 
                     Text {
                         anchors.centerIn: parent
                         text: "Reload Engine"
-                        color: "#FFFFFF"
+                        color: "#00D2B4"
                         font.pixelSize: 12
                         font.bold: true
                     }
