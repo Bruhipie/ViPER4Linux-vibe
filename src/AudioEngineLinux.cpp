@@ -1,6 +1,8 @@
 #include "AudioEngineLinux.h"
 #include <QProcess>
 #include <QCoreApplication>
+#include <QRegularExpression>
+#include <QTimer>
 #include <QDebug>
 #include <cmath>
 #include <cstdlib>
@@ -36,16 +38,16 @@ void AudioEngineLinux::setDefaultSink(const QString &sinkName) {
 }
 
 QString AudioEngineLinux::getHardwareOutputSink() {
-    // 1. If we already found the hardware sink and it's valid, return it
-    if (!m_hardwareOutputSink.isEmpty() && !m_hardwareOutputSink.contains("ViPER", Qt::CaseInsensitive)) {
-        return m_hardwareOutputSink;
-    }
-
-    // 2. Query default sink if not ViPER
+    // 1. Check current system default sink first (as long as it's not ViPER)
     QString current = getDefaultSink();
     if (!current.isEmpty() && !current.contains("ViPER", Qt::CaseInsensitive)) {
         m_hardwareOutputSink = current;
         return current;
+    }
+
+    // 2. If cached hardware sink is valid and non-ViPER, return it
+    if (!m_hardwareOutputSink.isEmpty() && !m_hardwareOutputSink.contains("ViPER", Qt::CaseInsensitive)) {
+        return m_hardwareOutputSink;
     }
 
     // 3. Query all non-ViPER sinks from pactl
@@ -85,11 +87,53 @@ QString AudioEngineLinux::getHardwareOutputSink() {
     return QString();
 }
 
+QString AudioEngineLinux::getSinkVolume(const QString &sinkName) {
+    if (sinkName.isEmpty()) return QString();
+    QProcess proc;
+    proc.start("pactl", QStringList() << "get-sink-volume" << sinkName);
+    if (!proc.waitForFinished(500)) return QString();
+    QString out = QString::fromUtf8(proc.readAllStandardOutput());
+    static QRegularExpression re(R"((\d+)%)");
+    auto match = re.match(out);
+    if (match.hasMatch()) {
+        return match.captured(1) + "%";
+    }
+    return QString();
+}
+
+bool AudioEngineLinux::getSinkMute(const QString &sinkName) {
+    if (sinkName.isEmpty()) return false;
+    QProcess proc;
+    proc.start("pactl", QStringList() << "get-sink-mute" << sinkName);
+    if (!proc.waitForFinished(500)) return false;
+    QString out = QString::fromUtf8(proc.readAllStandardOutput()).toLower();
+    return out.contains("yes");
+}
+
+void AudioEngineLinux::setSinkVolume(const QString &sinkName, const QString &volume) {
+    if (sinkName.isEmpty() || volume.isEmpty()) return;
+    QProcess::execute("pactl", QStringList() << "set-sink-volume" << sinkName << volume);
+}
+
+void AudioEngineLinux::setSinkMute(const QString &sinkName, bool muted) {
+    if (sinkName.isEmpty()) return;
+    QProcess::execute("pactl", QStringList() << "set-sink-mute" << sinkName << (muted ? "1" : "0"));
+}
+
 void AudioEngineLinux::createVirtualSink() {
-    // Unload all previous instances cleanly
+    // 1. Capture current hardware sink's volume and mute BEFORE creating virtual sink
+    QString hwSink = getHardwareOutputSink();
+    QString initialVol;
+    bool initialMute = false;
+    if (!hwSink.isEmpty()) {
+        initialVol = getSinkVolume(hwSink);
+        initialMute = getSinkMute(hwSink);
+    }
+
+    // 2. Unload all previous instances cleanly
     system("for id in $(pactl list modules short 2>/dev/null | grep -i ViPER4Linux_Sink | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
 
-    // Load module-null-sink
+    // 3. Load module-null-sink
     QProcess procLoad;
     procLoad.start("pactl", QStringList() 
         << "load-module" << "module-null-sink" 
@@ -99,10 +143,25 @@ void AudioEngineLinux::createVirtualSink() {
     if (procLoad.waitForFinished(2000)) {
         m_virtualSinkModuleId = QString::fromUtf8(procLoad.readAllStandardOutput()).trimmed();
     }
+
+    // 4. Immediately initialize virtual sink with identical volume and mute as the hardware sink
+    if (!initialVol.isEmpty()) {
+        setSinkVolume(kVirtualSinkName, initialVol);
+        m_lastSyncedVolume = initialVol;
+    }
+    setSinkMute(kVirtualSinkName, initialMute);
+    m_lastSyncedMute = initialMute;
 }
 
 void AudioEngineLinux::removeVirtualSink() {
     if (!m_hardwareOutputSink.isEmpty()) {
+        // Ensure hardware sink has latest volume before restoring
+        QString vVol = getSinkVolume(kVirtualSinkName);
+        if (!vVol.isEmpty()) {
+            setSinkVolume(m_hardwareOutputSink, vVol);
+        }
+        setSinkMute(m_hardwareOutputSink, getSinkMute(kVirtualSinkName));
+
         setDefaultSink(m_hardwareOutputSink);
         moveActiveStreamsTo(m_hardwareOutputSink);
     }
@@ -147,16 +206,97 @@ void AudioEngineLinux::setMasterEnabled(bool enabled) {
     m_masterEnabled = enabled;
 
     if (m_masterEnabled) {
+        // Sync hardware volume to virtual sink before switching
+        QString hwSink = getHardwareOutputSink();
+        if (!hwSink.isEmpty()) {
+            QString hwVol = getSinkVolume(hwSink);
+            if (!hwVol.isEmpty()) {
+                setSinkVolume(kVirtualSinkName, hwVol);
+                m_lastSyncedVolume = hwVol;
+            }
+            bool hwMute = getSinkMute(hwSink);
+            setSinkMute(kVirtualSinkName, hwMute);
+            m_lastSyncedMute = hwMute;
+        }
+
         setDefaultSink(kVirtualSinkName);
         moveActiveStreamsTo(kVirtualSinkName);
         emit statusChanged(true, "Processing Live Audio");
     } else {
         if (!m_hardwareOutputSink.isEmpty()) {
+            // Sync virtual sink volume to hardware sink before switching
+            QString vVol = getSinkVolume(kVirtualSinkName);
+            if (!vVol.isEmpty()) {
+                setSinkVolume(m_hardwareOutputSink, vVol);
+                m_lastSyncedVolume = vVol;
+            }
+            bool vMute = getSinkMute(kVirtualSinkName);
+            setSinkMute(m_hardwareOutputSink, vMute);
+            m_lastSyncedMute = vMute;
+
             setDefaultSink(m_hardwareOutputSink);
             moveActiveStreamsTo(m_hardwareOutputSink);
         }
         emit statusChanged(false, "Bypassed");
     }
+}
+
+void AudioEngineLinux::handleSubscriptionOutput() {
+    if (!m_subscribeProc) return;
+    QByteArray data = m_subscribeProc->readAllStandardOutput();
+    if (data.contains("sink")) {
+        syncVolumes();
+    }
+}
+
+void AudioEngineLinux::syncVolumes() {
+    if (m_isSyncing.load()) return;
+    if (!m_running.load() || !m_masterEnabled.load()) return;
+
+    QString hwSink = getHardwareOutputSink();
+    if (hwSink.isEmpty()) return;
+
+    QString vVirtual = getSinkVolume(kVirtualSinkName);
+    QString vHw = getSinkVolume(hwSink);
+    if (vVirtual.isEmpty() || vHw.isEmpty()) return;
+
+    bool mVirtual = getSinkMute(kVirtualSinkName);
+    bool mHw = getSinkMute(hwSink);
+
+    // If already identical, nothing to do
+    if (vVirtual == vHw && mVirtual == mHw) {
+        m_lastSyncedVolume = vVirtual;
+        m_lastSyncedMute = mVirtual;
+        return;
+    }
+
+    m_isSyncing.store(true);
+
+    // 1. Volume Synchronization
+    if (vVirtual != m_lastSyncedVolume) {
+        // User changed virtual sink (keyboard volume keys / KDE OSD) -> sync to hardware
+        setSinkVolume(hwSink, vVirtual);
+        m_lastSyncedVolume = vVirtual;
+    } else if (vHw != m_lastSyncedVolume) {
+        // User changed hardware sink (bluetooth controls / settings) -> sync to virtual
+        setSinkVolume(kVirtualSinkName, vHw);
+        m_lastSyncedVolume = vHw;
+    } else {
+        // Fallback default to virtual sink
+        setSinkVolume(hwSink, vVirtual);
+        m_lastSyncedVolume = vVirtual;
+    }
+
+    // 2. Mute Synchronization
+    if (mVirtual != m_lastSyncedMute) {
+        setSinkMute(hwSink, mVirtual);
+        m_lastSyncedMute = mVirtual;
+    } else if (mHw != m_lastSyncedMute) {
+        setSinkMute(kVirtualSinkName, mHw);
+        m_lastSyncedMute = mHw;
+    }
+
+    m_isSyncing.store(false);
 }
 
 bool AudioEngineLinux::start() {
@@ -178,12 +318,39 @@ bool AudioEngineLinux::start() {
         runAudioLoop();
     });
 
+    // Start background pactl subscribe process to track sink events instantaneously
+    if (!m_subscribeProc) {
+        m_subscribeProc = new QProcess(this);
+        connect(m_subscribeProc, &QProcess::readyReadStandardOutput, this, &AudioEngineLinux::handleSubscriptionOutput);
+        m_subscribeProc->start("pactl", QStringList() << "subscribe");
+    }
+
+    // Periodic heartbeat timer (every 200ms) to ensure guaranteed lockstep
+    if (!m_volumeSyncTimer) {
+        m_volumeSyncTimer = new QTimer(this);
+        connect(m_volumeSyncTimer, &QTimer::timeout, this, &AudioEngineLinux::syncVolumes);
+        m_volumeSyncTimer->start(200);
+    }
+
     emit statusChanged(m_masterEnabled, m_masterEnabled ? "Processing Live Audio" : "Bypassed");
     return true;
 }
 
 void AudioEngineLinux::stop() {
     if (!m_running.load()) return;
+
+    if (m_volumeSyncTimer) {
+        m_volumeSyncTimer->stop();
+        delete m_volumeSyncTimer;
+        m_volumeSyncTimer = nullptr;
+    }
+
+    if (m_subscribeProc) {
+        m_subscribeProc->terminate();
+        m_subscribeProc->waitForFinished(500);
+        delete m_subscribeProc;
+        m_subscribeProc = nullptr;
+    }
 
     m_shouldStop.store(true);
     if (m_workerThread.joinable()) {
@@ -252,12 +419,15 @@ void AudioEngineLinux::runAudioLoop() {
             }
         }
 
-        int readRes = pa_simple_read(s_record, buffer.data(), buffer.size() * sizeof(float), &err);
-        if (readRes < 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        // 4. Capture one audio chunk from virtual sink
+        if (pa_simple_read(s_record, buffer.data(), samplesPerChunk * sizeof(float), &err) < 0) {
+            pa_simple_free(s_record);
+            s_record = nullptr;
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
             continue;
         }
 
+        // 5. Apply ViPER DSP Processing
         {
             std::lock_guard<std::mutex> lock(m_engineMutex);
             if (m_engine) {
@@ -265,7 +435,13 @@ void AudioEngineLinux::runAudioLoop() {
             }
         }
 
-        pa_simple_write(s_playback, buffer.data(), buffer.size() * sizeof(float), &err);
+        // 6. Play processed audio directly into physical hardware sink
+        if (s_playback) {
+            if (pa_simple_write(s_playback, buffer.data(), samplesPerChunk * sizeof(float), &err) < 0) {
+                pa_simple_free(s_playback);
+                s_playback = nullptr;
+            }
+        }
     }
 
     if (s_record) pa_simple_free(s_record);
