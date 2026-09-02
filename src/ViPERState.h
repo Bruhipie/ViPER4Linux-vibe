@@ -4,6 +4,8 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <QJsonObject>
+#include <QTimer>
 #include <memory>
 #include <mutex>
 #include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
@@ -40,6 +42,7 @@ class ViPERState : public QObject {
     // Master & Mode
     VIPER_PROP(bool, isEnabled, setIsEnabled, true)
     VIPER_PROP(int, fxType, setFxType, 0) // 0 = Headphone, 1 = Speaker
+    VIPER_PROP(int, currentCategory, setCurrentCategory, 0)
 
     // Output
     VIPER_PROP(int, outputVolume, setOutputVolume, 100)
@@ -247,6 +250,9 @@ public:
     Q_INVOKABLE void loadPreset(const QString &name);
     Q_INVOKABLE void deletePreset(const QString &name);
 
+    Q_INVOKABLE void saveState();
+    Q_INVOKABLE bool loadState();
+
     Q_PROPERTY(QString defaultIrsFolder READ defaultIrsFolder CONSTANT)
     QString defaultIrsFolder() const;
 
@@ -261,6 +267,12 @@ private:
     void initDefaults();
     void initEqualizerBands(int count);
     void onPropertyChanged(const char *propName);
+
+    QJsonObject serializeState() const;
+    void deserializeState(const QJsonObject &obj);
+
+    bool m_isLoadingState = false;
+    QTimer m_autoSaveTimer;
 
     // Apply to DSP engine
     void syncMasterLimiter();

@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QSet>
+#include <QMetaProperty>
 #include <cmath>
 #include <iostream>
 
@@ -27,8 +29,14 @@ ViPERState::ViPERState(QObject *parent)
 {
     m_engine->SetSamplingRate(48000);
     initDefaults();
+    loadState();
     syncAll();
     refreshDriverStatus();
+
+    m_autoSaveTimer.setSingleShot(true);
+    connect(&m_autoSaveTimer, &QTimer::timeout, this, [this]() {
+        saveState();
+    });
 
     m_audioEngine = std::make_unique<AudioEngineLinux>(m_engine.get(), this);
     connect(m_audioEngine.get(), &AudioEngineLinux::statusChanged, this, [this](bool active, const QString &text) {
@@ -53,6 +61,7 @@ ViPERState::~ViPERState() {
 }
 
 void ViPERState::stopEngine() {
+    saveState();
     if (m_audioEngine) {
         m_audioEngine->stop();
     }
@@ -209,6 +218,9 @@ void ViPERState::setEqualizerBandCount(int count) {
         m_equalizerBandCount = count;
         initEqualizerBands(count);
         syncEqualizer();
+        if (!m_isLoadingState) {
+            m_autoSaveTimer.start(500);
+        }
     }
 }
 
@@ -226,6 +238,9 @@ void ViPERState::setEqBandLevel(int bandIndex, qreal level) {
         m_equalizerBands[bandIndex] = level;
         emit equalizerBandsChanged();
         syncEqualizer();
+        if (!m_isLoadingState) {
+            m_autoSaveTimer.start(500);
+        }
     }
 }
 
@@ -264,6 +279,9 @@ void ViPERState::applyEqPreset(const QString &name) {
         m_equalizerBands = list;
         emit equalizerBandsChanged();
         syncEqualizer();
+        if (!m_isLoadingState) {
+            m_autoSaveTimer.start(500);
+        }
     }
 }
 
@@ -271,40 +289,114 @@ void ViPERState::resetEq() {
     applyEqPreset("Flat");
 }
 
+static const QSet<QString> kIgnoredProperties = {
+    "objectName", "driverInstalled", "driverStatusText", "audioServerName",
+    "outputDeviceName", "currentSampleRate", "dspVersion", "isProcessing",
+    "presetList", "userPresetFiles", "kernelFiles", "ddcFiles",
+    "equalizerBandLabels", "equalizerPresetNames", "defaultIrsFolder",
+    "audioProcessingActive", "systemAudioRouted", "processedFrames", "vuLeft", "vuRight"
+};
+
+QJsonObject ViPERState::serializeState() const {
+    QJsonObject obj;
+    const QMetaObject *mo = metaObject();
+    for (int i = 0; i < mo->propertyCount(); ++i) {
+        QMetaProperty prop = mo->property(i);
+        QString name = prop.name();
+        if (!prop.isWritable() || kIgnoredProperties.contains(name)) {
+            continue;
+        }
+        QVariant val = prop.read(this);
+        obj[name] = QJsonValue::fromVariant(val);
+    }
+    return obj;
+}
+
+void ViPERState::deserializeState(const QJsonObject &obj) {
+    m_isLoadingState = true;
+
+    // Handle band counts first so array lists are sized before restoring elements
+    if (obj.contains("equalizerBandCount")) {
+        setEqualizerBandCount(obj["equalizerBandCount"].toInt());
+    }
+    if (obj.contains("dynEqBandCount")) {
+        setDynEqBandCount(obj["dynEqBandCount"].toInt());
+    }
+
+    const QMetaObject *mo = metaObject();
+    for (auto it = obj.begin(); it != obj.end(); ++it) {
+        QString name = it.key();
+        if (kIgnoredProperties.contains(name) || name == "equalizerBandCount" || name == "dynEqBandCount") {
+            continue;
+        }
+
+        int idx = mo->indexOfProperty(name.toUtf8().constData());
+        if (idx < 0) continue;
+
+        QMetaProperty prop = mo->property(idx);
+        if (!prop.isWritable()) continue;
+
+        QVariant val = it.value().toVariant();
+        prop.write(this, val);
+    }
+
+    // Reload files if paths were restored
+    if (!m_convolutionKernelPath.isEmpty() && m_convolutionEnabled) {
+        loadConvolverKernel(m_convolutionKernelPath);
+    }
+    if (!m_ddcFilePath.isEmpty() && m_ddcEnabled) {
+        loadDdcProfile(m_ddcFilePath);
+    }
+
+    m_isLoadingState = false;
+    syncAll();
+}
+
+void ViPERState::saveState() {
+    QString dirPath = QDir::homePath() + "/.config/viper4linux";
+    QDir().mkpath(dirPath);
+
+    QJsonObject obj = serializeState();
+    QFile file(dirPath + "/state.json");
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
+        file.close();
+        qDebug() << "[ViPER] Auto-saved settings to:" << file.fileName();
+    }
+}
+
+bool ViPERState::loadState() {
+    QString filePath = QDir::homePath() + "/.config/viper4linux/state.json";
+    QFile file(filePath);
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
+    if (obj.isEmpty()) return false;
+
+    qDebug() << "[ViPER] Restoring previous session settings from:" << filePath;
+    deserializeState(obj);
+    return true;
+}
+
 void ViPERState::savePreset(const QString &name) {
     if (name.trimmed().isEmpty()) return;
     QString dirPath = QDir::homePath() + "/.config/viper4linux/presets";
     QDir().mkpath(dirPath);
 
-    QJsonObject obj;
+    QJsonObject obj = serializeState();
     obj["name"] = name;
-    obj["outputVolume"] = m_outputVolume;
-    obj["channelPan"] = m_channelPan;
-    obj["limiter"] = m_limiter;
-    obj["equalizerEnabled"] = m_equalizerEnabled;
-    obj["equalizerBandCount"] = m_equalizerBandCount;
-    QJsonArray bandsArr;
-    for (const auto &b : m_equalizerBands) bandsArr.append(b.toDouble());
-    obj["equalizerBands"] = bandsArr;
-    obj["viperBassEnabled"] = m_viperBassEnabled;
-    obj["viperBassMode"] = m_viperBassMode;
-    obj["viperBassFrequency"] = m_viperBassFrequency;
-    obj["viperBassGain"] = m_viperBassGain;
-    obj["viperClarityEnabled"] = m_viperClarityEnabled;
-    obj["viperClarityMode"] = m_viperClarityMode;
-    obj["viperClarityGain"] = m_viperClarityGain;
-    obj["reverberationEnabled"] = m_reverberationEnabled;
-    obj["tubeSimulatorEnabled"] = m_tubeSimulatorEnabled;
-    obj["analogXEnabled"] = m_analogXEnabled;
 
     QFile file(dirPath + "/" + name + ".json");
     if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(obj).toJson());
+        file.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
         file.close();
         if (!m_userPresetFiles.contains(name + ".json")) {
             m_userPresetFiles.append(name + ".json");
             emit userPresetFilesChanged();
         }
+        qDebug() << "[ViPER] Saved preset:" << name;
     }
 }
 
@@ -314,29 +406,10 @@ void ViPERState::loadPreset(const QString &name) {
     if (!file.open(QIODevice::ReadOnly)) return;
 
     QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
-    if (obj.contains("outputVolume")) setOutputVolume(obj["outputVolume"].toInt());
-    if (obj.contains("channelPan")) setChannelPan(obj["channelPan"].toInt());
-    if (obj.contains("limiter")) setLimiter(obj["limiter"].toInt());
-    if (obj.contains("equalizerEnabled")) setEqualizerEnabled(obj["equalizerEnabled"].toBool());
-    if (obj.contains("equalizerBandCount")) setEqualizerBandCount(obj["equalizerBandCount"].toInt());
-    if (obj.contains("equalizerBands")) {
-        QVariantList list;
-        for (const auto &v : obj["equalizerBands"].toArray()) list.append(v.toDouble());
-        m_equalizerBands = list;
-        emit equalizerBandsChanged();
+    if (!obj.isEmpty()) {
+        deserializeState(obj);
+        qDebug() << "[ViPER] Loaded preset:" << name;
     }
-    if (obj.contains("viperBassEnabled")) setViperBassEnabled(obj["viperBassEnabled"].toBool());
-    if (obj.contains("viperBassMode")) setViperBassMode(obj["viperBassMode"].toInt());
-    if (obj.contains("viperBassFrequency")) setViperBassFrequency(obj["viperBassFrequency"].toInt());
-    if (obj.contains("viperBassGain")) setViperBassGain(obj["viperBassGain"].toInt());
-    if (obj.contains("viperClarityEnabled")) setViperClarityEnabled(obj["viperClarityEnabled"].toBool());
-    if (obj.contains("viperClarityMode")) setViperClarityMode(obj["viperClarityMode"].toInt());
-    if (obj.contains("viperClarityGain")) setViperClarityGain(obj["viperClarityGain"].toInt());
-    if (obj.contains("reverberationEnabled")) setReverberationEnabled(obj["reverberationEnabled"].toBool());
-    if (obj.contains("tubeSimulatorEnabled")) setTubeSimulatorEnabled(obj["tubeSimulatorEnabled"].toBool());
-    if (obj.contains("analogXEnabled")) setAnalogXEnabled(obj["analogXEnabled"].toBool());
-
-    reloadEngine();
 }
 
 void ViPERState::deletePreset(const QString &name) {
@@ -495,6 +568,10 @@ void ViPERState::syncDdc() {
 
 void ViPERState::onPropertyChanged(const char *propName) {
     if (!m_engine) return;
+
+    if (!m_isLoadingState) {
+        m_autoSaveTimer.start(500);
+    }
 
     QString name(propName);
     if (name == "isEnabled") {

@@ -15,7 +15,21 @@ ApplicationWindow {
     title: "ViPER4Linux"
     color: "#0F1013"
 
-    property int currentCategory: 0
+    property int currentCategory: viperState.currentCategory
+    onCurrentCategoryChanged: {
+        if (viperState.currentCategory !== currentCategory) {
+            viperState.currentCategory = currentCategory
+        }
+    }
+
+    Connections {
+        target: viperState
+        function onCurrentCategoryChanged() {
+            if (appWindow.currentCategory !== viperState.currentCategory) {
+                appWindow.currentCategory = viperState.currentCategory
+            }
+        }
+    }
 
     // File Dialog for Convolver & DDC
     FileDialog {
