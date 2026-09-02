@@ -41,6 +41,10 @@ ViPERState::ViPERState(QObject *parent)
 }
 
 ViPERState::~ViPERState() {
+    stopEngine();
+}
+
+void ViPERState::stopEngine() {
     if (m_audioEngine) {
         m_audioEngine->stop();
     }

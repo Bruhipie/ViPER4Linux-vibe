@@ -1,16 +1,19 @@
 #include "AudioEngineLinux.h"
 #include <QProcess>
 #include <QCoreApplication>
+#include <QRegularExpression>
+#include <QTimer>
 #include <QDebug>
 #include <cmath>
 #include <cstdlib>
-#include <pulse/simple.h>
-#include <pulse/error.h>
+#include <cstring>
+
+#include <pipewire/pipewire.h>
+#include <pipewire/filter.h>
+#include <pipewire/thread-loop.h>
+#include <spa/param/audio/format-utils.h>
 
 #include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
-
-static const char *kVirtualSinkName    = "ViPER4Linux_Sink";
-static const char *kVirtualMonitorName = "ViPER4Linux_Sink.monitor";
 
 AudioEngineLinux::AudioEngineLinux(ViPER *engine, QObject *parent)
     : QObject(parent), m_engine(engine)
@@ -21,252 +24,406 @@ AudioEngineLinux::~AudioEngineLinux() {
     stop();
 }
 
-QString AudioEngineLinux::getDefaultSink() {
-    QProcess proc;
-    proc.start("pactl", QStringList() << "get-default-sink");
-    if (proc.waitForFinished(1000)) {
-        return QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+void AudioEngineLinux::onProcessCallback(void *userdata, struct spa_io_position *position) {
+    auto *self = static_cast<AudioEngineLinux *>(userdata);
+    if (self) {
+        self->processAudio(position);
     }
-    return QString();
 }
 
-void AudioEngineLinux::setDefaultSink(const QString &sinkName) {
-    if (sinkName.isEmpty()) return;
-    QProcess::execute("pactl", QStringList() << "set-default-sink" << sinkName);
-}
+void AudioEngineLinux::processAudio(struct spa_io_position *position) {
+    if (!position) return;
+    uint32_t n_samples = position->clock.duration;
+    if (n_samples == 0) return;
 
-QString AudioEngineLinux::getHardwareOutputSink() {
-    // Return cached value if it's already a valid non-ViPER sink
-    if (!m_hardwareOutputSink.isEmpty() && !m_hardwareOutputSink.contains("ViPER", Qt::CaseInsensitive)) {
-        return m_hardwareOutputSink;
+    float *in_l = static_cast<float *>(pw_filter_get_dsp_buffer(m_inPortL, n_samples));
+    float *in_r = static_cast<float *>(pw_filter_get_dsp_buffer(m_inPortR, n_samples));
+    float *out_l = static_cast<float *>(pw_filter_get_dsp_buffer(m_outPortL, n_samples));
+    float *out_r = static_cast<float *>(pw_filter_get_dsp_buffer(m_outPortR, n_samples));
+
+    if (!out_l || !out_r) return;
+
+    if (!in_l || !in_r) {
+        std::memset(out_l, 0, n_samples * sizeof(float));
+        std::memset(out_r, 0, n_samples * sizeof(float));
+        return;
     }
 
-    // Query the current default sink - if it's not ViPER, use it
-    QString current = getDefaultSink();
-    if (!current.isEmpty() && !current.contains("ViPER", Qt::CaseInsensitive)) {
-        m_hardwareOutputSink = current;
-        return current;
+    // If master switch is bypassed, bit-perfect pass-through with 0 latency
+    if (!m_masterEnabled.load()) {
+        std::memcpy(out_l, in_l, n_samples * sizeof(float));
+        std::memcpy(out_r, in_r, n_samples * sizeof(float));
+        return;
     }
 
-    // Fall back: query all non-ViPER sinks
-    QProcess proc;
-    proc.start("sh", QStringList() << "-c" << "pactl list sinks short 2>/dev/null | grep -v -i ViPER | awk '{print $2}'");
-    if (proc.waitForFinished(1000)) {
-        QStringList sinks = QString::fromUtf8(proc.readAllStandardOutput()).split('\n', Qt::SkipEmptyParts);
-        // Priority 1: Bluetooth
-        for (const QString &s : sinks) {
-            QString t = s.trimmed();
-            if (t.startsWith("bluez_output")) { m_hardwareOutputSink = t; return t; }
+    size_t samplesNeeded = n_samples * 2;
+    if (m_interleavedBuffer.size() != samplesNeeded) {
+        m_interleavedBuffer.resize(samplesNeeded);
+    }
+
+    for (uint32_t i = 0; i < n_samples; ++i) {
+        m_interleavedBuffer[i * 2]     = in_l[i];
+        m_interleavedBuffer[i * 2 + 1] = in_r[i];
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_engineMutex);
+        if (m_engine) {
+            m_engine->Process(m_interleavedBuffer, n_samples);
         }
-        // Priority 2: Built-in speaker / analog
-        for (const QString &s : sinks) {
-            QString t = s.trimmed();
-            if (t.contains("Speaker", Qt::CaseInsensitive) || t.contains("analog", Qt::CaseInsensitive)) {
-                m_hardwareOutputSink = t; return t;
+    }
+
+    for (uint32_t i = 0; i < n_samples; ++i) {
+        out_l[i] = m_interleavedBuffer[i * 2];
+        out_r[i] = m_interleavedBuffer[i * 2 + 1];
+    }
+}
+
+bool AudioEngineLinux::initPipeWireFilter() {
+    pw_init(nullptr, nullptr);
+
+    m_threadLoop = pw_thread_loop_new("ViPER-PipeWire", nullptr);
+    if (!m_threadLoop) {
+        qWarning() << "[ViPER] Failed to create PipeWire thread loop";
+        return false;
+    }
+
+    static const struct pw_filter_events filterEvents = {
+        PW_VERSION_FILTER_EVENTS,
+        .process = onProcessCallback,
+    };
+
+    m_filter = pw_filter_new_simple(
+        pw_thread_loop_get_loop(m_threadLoop),
+        "ViPER4Linux",
+        pw_properties_new(
+            PW_KEY_MEDIA_TYPE, "Audio",
+            PW_KEY_MEDIA_CATEGORY, "Filter",
+            PW_KEY_MEDIA_ROLE, "DSP",
+            PW_KEY_NODE_NAME, "ViPER4Linux",
+            PW_KEY_NODE_DESCRIPTION, "ViPER4Linux Audio DSP Filter",
+            PW_KEY_NODE_PASSIVE, "false",
+            PW_KEY_NODE_AUTOCONNECT, "false",
+            nullptr),
+        &filterEvents,
+        this
+    );
+
+    if (!m_filter) {
+        qWarning() << "[ViPER] Failed to create PipeWire filter";
+        pw_thread_loop_destroy(m_threadLoop);
+        m_threadLoop = nullptr;
+        return false;
+    }
+
+    m_inPortL = pw_filter_add_port(m_filter,
+        PW_DIRECTION_INPUT,
+        PW_FILTER_PORT_FLAG_MAP_BUFFERS,
+        0,
+        pw_properties_new(
+            PW_KEY_FORMAT_DSP, "32 bit float mono audio",
+            PW_KEY_PORT_NAME, "input_FL",
+            PW_KEY_AUDIO_CHANNEL, "FL",
+            nullptr),
+        nullptr, 0);
+
+    m_inPortR = pw_filter_add_port(m_filter,
+        PW_DIRECTION_INPUT,
+        PW_FILTER_PORT_FLAG_MAP_BUFFERS,
+        0,
+        pw_properties_new(
+            PW_KEY_FORMAT_DSP, "32 bit float mono audio",
+            PW_KEY_PORT_NAME, "input_FR",
+            PW_KEY_AUDIO_CHANNEL, "FR",
+            nullptr),
+        nullptr, 0);
+
+    m_outPortL = pw_filter_add_port(m_filter,
+        PW_DIRECTION_OUTPUT,
+        PW_FILTER_PORT_FLAG_MAP_BUFFERS,
+        0,
+        pw_properties_new(
+            PW_KEY_FORMAT_DSP, "32 bit float mono audio",
+            PW_KEY_PORT_NAME, "output_FL",
+            PW_KEY_AUDIO_CHANNEL, "FL",
+            nullptr),
+        nullptr, 0);
+
+    m_outPortR = pw_filter_add_port(m_filter,
+        PW_DIRECTION_OUTPUT,
+        PW_FILTER_PORT_FLAG_MAP_BUFFERS,
+        0,
+        pw_properties_new(
+            PW_KEY_FORMAT_DSP, "32 bit float mono audio",
+            PW_KEY_PORT_NAME, "output_FR",
+            PW_KEY_AUDIO_CHANNEL, "FR",
+            nullptr),
+        nullptr, 0);
+
+    if (pw_filter_connect(m_filter, PW_FILTER_FLAG_RT_PROCESS, nullptr, 0) < 0) {
+        qWarning() << "[ViPER] Failed to connect PipeWire filter";
+        pw_filter_destroy(m_filter);
+        m_filter = nullptr;
+        pw_thread_loop_destroy(m_threadLoop);
+        m_threadLoop = nullptr;
+        return false;
+    }
+
+    if (pw_thread_loop_start(m_threadLoop) < 0) {
+        qWarning() << "[ViPER] Failed to start PipeWire thread loop";
+        pw_filter_destroy(m_filter);
+        m_filter = nullptr;
+        pw_thread_loop_destroy(m_threadLoop);
+        m_threadLoop = nullptr;
+        return false;
+    }
+
+    qDebug() << "[ViPER] Native PipeWire filter node started successfully";
+    return true;
+}
+
+void AudioEngineLinux::cleanupPipeWireFilter() {
+    if (m_threadLoop) {
+        pw_thread_loop_stop(m_threadLoop);
+    }
+    if (m_filter) {
+        pw_filter_destroy(m_filter);
+        m_filter = nullptr;
+    }
+    if (m_threadLoop) {
+        pw_thread_loop_destroy(m_threadLoop);
+        m_threadLoop = nullptr;
+    }
+    pw_deinit();
+}
+
+QString AudioEngineLinux::getHardwarePlaybackSink() {
+    // 1. Check wpctl status for the currently starred default sink
+    QProcess procWp;
+    procWp.start("wpctl", QStringList() << "status");
+    if (procWp.waitForFinished(600)) {
+        QString out = QString::fromUtf8(procWp.readAllStandardOutput());
+        int sinksIdx = out.indexOf("Sinks:");
+        int sourcesIdx = out.indexOf("Sources:");
+        if (sinksIdx >= 0 && sourcesIdx > sinksIdx) {
+            QString sinksBlock = out.mid(sinksIdx, sourcesIdx - sinksIdx);
+            static QRegularExpression reStar(R"(\*\s*(\d+)\.)");
+            auto match = reStar.match(sinksBlock);
+            if (match.hasMatch()) {
+                QString idStr = match.captured(1);
+                QProcess procInsp;
+                procInsp.start("wpctl", QStringList() << "inspect" << idStr);
+                if (procInsp.waitForFinished(600)) {
+                    QString inspOut = QString::fromUtf8(procInsp.readAllStandardOutput());
+                    static QRegularExpression reNode("node\\.name\\s*=\\s*\"([^\"]+)\"");
+                    auto nodeMatch = reNode.match(inspOut);
+                    if (nodeMatch.hasMatch()) {
+                        QString nodeName = nodeMatch.captured(1).trimmed();
+                        if (!nodeName.contains("ViPER", Qt::CaseInsensitive)) {
+                            return nodeName;
+                        }
+                    }
+                }
             }
         }
-        // Priority 3: First non-HDMI sink
+    }
+
+    // 2. Query available playback input ports from pw-link
+    QProcess procLink;
+    procLink.start("pw-link", QStringList() << "-i");
+    if (procLink.waitForFinished(600)) {
+        QStringList lines = QString::fromUtf8(procLink.readAllStandardOutput()).split('\n', Qt::SkipEmptyParts);
+        QStringList sinks;
+        for (const QString &line : lines) {
+            QString trimmed = line.trimmed();
+            if (trimmed.endsWith(":playback_FL") && !trimmed.contains("ViPER", Qt::CaseInsensitive)) {
+                sinks << trimmed.left(trimmed.length() - 12);
+            }
+        }
+        // Priority 1: Bluetooth
         for (const QString &s : sinks) {
-            QString t = s.trimmed();
-            if (!t.contains("HDMI", Qt::CaseInsensitive)) { m_hardwareOutputSink = t; return t; }
+            if (s.startsWith("bluez_output")) return s;
         }
-        if (!sinks.isEmpty()) {
-            m_hardwareOutputSink = sinks.first().trimmed();
-            return m_hardwareOutputSink;
+        // Priority 2: Built-in Speakers
+        for (const QString &s : sinks) {
+            if (s.contains("Speaker", Qt::CaseInsensitive) || s.contains("analog", Qt::CaseInsensitive)) {
+                return s;
+            }
         }
+        // Priority 3: Non-HDMI
+        for (const QString &s : sinks) {
+            if (!s.contains("HDMI", Qt::CaseInsensitive)) return s;
+        }
+        if (!sinks.isEmpty()) return sinks.first();
     }
     return QString();
 }
 
-void AudioEngineLinux::createVirtualSink() {
-    // Unload any leftover modules from a previous run
-    system("for id in $(pactl list modules short 2>/dev/null | grep -iE 'ViPER4Linux' | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
-
-    // Single null-sink: all apps play here
-    QProcess proc;
-    proc.start("pactl", QStringList()
-        << "load-module" << "module-null-sink"
-        << QString("sink_name=%1").arg(kVirtualSinkName)
-        << "sink_properties=device.description=ViPER4Linux");
-    if (proc.waitForFinished(2000)) {
-        m_virtualSinkModuleId = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-    }
+void AudioEngineLinux::linkFilterOutput(const QString &hwSink) {
+    if (hwSink.isEmpty()) return;
+    QProcess::execute("pw-link", QStringList() << "ViPER4Linux:output_FL" << (hwSink + ":playback_FL"));
+    QProcess::execute("pw-link", QStringList() << "ViPER4Linux:output_FR" << (hwSink + ":playback_FR"));
 }
 
-void AudioEngineLinux::removeVirtualSink() {
-    if (!m_hardwareOutputSink.isEmpty()) {
-        setDefaultSink(m_hardwareOutputSink);
-        moveActiveStreamsTo(m_hardwareOutputSink);
-    }
-    if (!m_virtualSinkModuleId.isEmpty()) {
-        QProcess::execute("pactl", QStringList() << "unload-module" << m_virtualSinkModuleId);
-        m_virtualSinkModuleId.clear();
-    }
+void AudioEngineLinux::disconnectFilterOutput(const QString &hwSink) {
+    if (hwSink.isEmpty()) return;
+    QProcess::execute("pw-link", QStringList() << "-d" << "ViPER4Linux:output_FL" << (hwSink + ":playback_FL"));
+    QProcess::execute("pw-link", QStringList() << "-d" << "ViPER4Linux:output_FR" << (hwSink + ":playback_FR"));
 }
 
-void AudioEngineLinux::moveActiveStreamsTo(const QString &targetSink) {
-    if (targetSink.isEmpty()) return;
+void AudioEngineLinux::routeClientStreams(const QString &hwSink) {
+    if (hwSink.isEmpty()) return;
 
     QProcess proc;
-    proc.start("pactl", QStringList() << "list" << "sink-inputs");
-    if (!proc.waitForFinished(1000)) return;
+    proc.start("pw-link", QStringList() << "-l");
+    if (!proc.waitForFinished(600)) return;
 
     QString output = QString::fromUtf8(proc.readAllStandardOutput());
-    QStringList sections = output.split("Sink Input #", Qt::SkipEmptyParts);
+    QStringList lines = output.split('\n');
 
-    qint64 myPid = QCoreApplication::applicationPid();
-    QString myPidStr = QString("application.process.id = \"%1\"").arg(myPid);
+    QString currentSource;
+    QString targetFL = hwSink + ":playback_FL";
+    QString targetFR = hwSink + ":playback_FR";
 
-    for (const QString &section : sections) {
-        int firstLineEnd = section.indexOf('\n');
-        if (firstLineEnd <= 0) continue;
-        QString idStr = section.left(firstLineEnd).trimmed();
-        bool ok = false;
-        int inputId = idStr.toInt(&ok);
-        if (!ok) continue;
+    for (const QString &rawLine : lines) {
+        if (rawLine.isEmpty()) continue;
+        if (!rawLine.startsWith(' ') && !rawLine.startsWith('\t')) {
+            currentSource = rawLine.trimmed();
+        } else if (rawLine.contains("|->")) {
+            QString dest = rawLine.mid(rawLine.indexOf("|->") + 3).trimmed();
+            if (dest == targetFL) {
+                // Ignore ViPER's own filter output
+                if (currentSource.startsWith("ViPER4Linux", Qt::CaseInsensitive)) continue;
+                if (!currentSource.endsWith(":output_FL")) continue;
 
-        // Skip our own DSP streams and any ViPER-related streams
-        if (section.contains(myPidStr) || section.contains("ViPER", Qt::CaseInsensitive)) {
-            continue;
+                QString clientBase = currentSource.left(currentSource.length() - 10);
+                QString clientFL = clientBase + ":output_FL";
+                QString clientFR = clientBase + ":output_FR";
+
+                // Connect application stream into ViPER Filter input
+                QProcess::execute("pw-link", QStringList() << clientFL << "ViPER4Linux:input_FL");
+                QProcess::execute("pw-link", QStringList() << clientFR << "ViPER4Linux:input_FR");
+
+                // Disconnect direct links from application to hardware
+                QProcess::execute("pw-link", QStringList() << "-d" << clientFL << targetFL);
+                QProcess::execute("pw-link", QStringList() << "-d" << clientFR << targetFR);
+
+                m_routedClients.insert(clientBase);
+            }
         }
-
-        QProcess::execute("pactl", QStringList() << "move-sink-input" << QString::number(inputId) << targetSink);
     }
+}
+
+void AudioEngineLinux::restoreClientStreams(const QString &hwSink) {
+    if (hwSink.isEmpty()) return;
+
+    QString targetFL = hwSink + ":playback_FL";
+    QString targetFR = hwSink + ":playback_FR";
+
+    // Re-check pw-link -l for any clients currently hooked into ViPER
+    QProcess proc;
+    proc.start("pw-link", QStringList() << "-l");
+    if (proc.waitForFinished(600)) {
+        QString output = QString::fromUtf8(proc.readAllStandardOutput());
+        QStringList lines = output.split('\n');
+        QString currentSource;
+        for (const QString &rawLine : lines) {
+            if (rawLine.isEmpty()) continue;
+            if (!rawLine.startsWith(' ') && !rawLine.startsWith('\t')) {
+                currentSource = rawLine.trimmed();
+            } else if (rawLine.contains("|->")) {
+                QString dest = rawLine.mid(rawLine.indexOf("|->") + 3).trimmed();
+                if (dest == "ViPER4Linux:input_FL" && currentSource.endsWith(":output_FL")) {
+                    QString clientBase = currentSource.left(currentSource.length() - 10);
+                    m_routedClients.insert(clientBase);
+                }
+            }
+        }
+    }
+
+    for (const QString &clientBase : m_routedClients) {
+        QString clientFL = clientBase + ":output_FL";
+        QString clientFR = clientBase + ":output_FR";
+
+        // Reconnect client directly back to hardware sink
+        QProcess::execute("pw-link", QStringList() << clientFL << targetFL);
+        QProcess::execute("pw-link", QStringList() << clientFR << targetFR);
+
+        // Disconnect from ViPER
+        QProcess::execute("pw-link", QStringList() << "-d" << clientFL << "ViPER4Linux:input_FL");
+        QProcess::execute("pw-link", QStringList() << "-d" << clientFR << "ViPER4Linux:input_FR");
+    }
+    m_routedClients.clear();
+}
+
+void AudioEngineLinux::updateStreamRouting() {
+    if (!m_running.load()) return;
+
+    QString activeSink = getHardwarePlaybackSink();
+    if (activeSink.isEmpty()) return;
+
+    // Handle audio output device switch (e.g. bluetooth connected/disconnected)
+    if (activeSink != m_currentHardwareSink) {
+        if (!m_currentHardwareSink.isEmpty()) {
+            disconnectFilterOutput(m_currentHardwareSink);
+            restoreClientStreams(m_currentHardwareSink);
+        }
+        m_currentHardwareSink = activeSink;
+        linkFilterOutput(m_currentHardwareSink);
+    }
+
+    // Intercept any new streams playing to hardware
+    routeClientStreams(m_currentHardwareSink);
 }
 
 void AudioEngineLinux::setMasterEnabled(bool enabled) {
     if (m_masterEnabled == enabled) return;
     m_masterEnabled = enabled;
 
-    if (m_masterEnabled) {
-        setDefaultSink(kVirtualSinkName);
-        moveActiveStreamsTo(kVirtualSinkName);
-        emit statusChanged(true, "Processing Live Audio");
-    } else {
-        if (!m_hardwareOutputSink.isEmpty()) {
-            setDefaultSink(m_hardwareOutputSink);
-            moveActiveStreamsTo(m_hardwareOutputSink);
-        }
-        emit statusChanged(false, "Bypassed");
-    }
+    emit statusChanged(m_masterEnabled.load(), m_masterEnabled.load() ? "Processing Live Audio" : "Bypassed");
 }
 
 bool AudioEngineLinux::start() {
     if (m_running.load()) return true;
 
-    m_hardwareOutputSink = getHardwareOutputSink();
-    m_shouldStop.store(false);
+    if (!initPipeWireFilter()) {
+        qWarning() << "[ViPER] Failed to initialize PipeWire filter";
+        return false;
+    }
+
     m_running.store(true);
+    m_currentHardwareSink = getHardwarePlaybackSink();
+    linkFilterOutput(m_currentHardwareSink);
 
-    m_workerThread = std::thread([this]() {
-        createVirtualSink();
+    // Initial stream routing
+    routeClientStreams(m_currentHardwareSink);
 
-        if (m_masterEnabled) {
-            setDefaultSink(kVirtualSinkName);
-            std::this_thread::sleep_for(std::chrono::milliseconds(150));
-            moveActiveStreamsTo(kVirtualSinkName);
-        }
+    // Start background watcher timer (250ms) to intercept new playback streams smoothly
+    if (!m_routeTimer) {
+        m_routeTimer = new QTimer(this);
+        connect(m_routeTimer, &QTimer::timeout, this, &AudioEngineLinux::updateStreamRouting);
+        m_routeTimer->start(250);
+    }
 
-        runAudioLoop();
-    });
-
-    emit statusChanged(m_masterEnabled, m_masterEnabled ? "Processing Live Audio" : "Bypassed");
+    emit statusChanged(m_masterEnabled.load(), m_masterEnabled.load() ? "Processing Live Audio" : "Bypassed");
     return true;
 }
 
 void AudioEngineLinux::stop() {
     if (!m_running.load()) return;
 
-    m_shouldStop.store(true);
-    if (m_workerThread.joinable()) {
-        m_workerThread.join();
+    if (m_routeTimer) {
+        m_routeTimer->stop();
+        delete m_routeTimer;
+        m_routeTimer = nullptr;
     }
 
-    removeVirtualSink();
+    if (!m_currentHardwareSink.isEmpty()) {
+        restoreClientStreams(m_currentHardwareSink);
+        disconnectFilterOutput(m_currentHardwareSink);
+    }
+
+    cleanupPipeWireFilter();
     m_running.store(false);
     emit statusChanged(false, "Stopped");
-}
-
-void AudioEngineLinux::runAudioLoop() {
-    pa_sample_spec ss;
-    ss.format   = PA_SAMPLE_FLOAT32LE;
-    ss.rate     = 48000;
-    ss.channels = 2;
-
-    int err = 0;
-    pa_simple *s_record   = nullptr;
-    pa_simple *s_playback = nullptr;
-
-    const size_t framesPerChunk  = 1024;
-    const size_t samplesPerChunk = framesPerChunk * 2; // stereo
-    std::vector<float> buffer(samplesPerChunk, 0.0f);
-
-    while (!m_shouldStop.load()) {
-        // 1. Keep record stream alive, locked to the virtual sink monitor
-        if (!s_record) {
-            s_record = pa_simple_new(
-                nullptr, "ViPER4Linux", PA_STREAM_RECORD,
-                kVirtualMonitorName, "ViPER Monitor Record",
-                &ss, nullptr, nullptr, &err
-            );
-            if (!s_record) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                continue;
-            }
-        }
-
-        // 2. If master bypass is active: close playback stream, idle
-        if (!m_masterEnabled.load()) {
-            if (s_playback) {
-                pa_simple_free(s_playback);
-                s_playback = nullptr;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            continue;
-        }
-
-        // 3. Keep playback stream alive, locked to the hardware output sink
-        if (!s_playback) {
-            QString hwSink = getHardwareOutputSink();
-            QByteArray hwBytes = hwSink.toUtf8();
-            const char *targetDev = hwBytes.isEmpty() ? nullptr : hwBytes.constData();
-
-            s_playback = pa_simple_new(
-                nullptr, "ViPER4Linux", PA_STREAM_PLAYBACK,
-                targetDev, "ViPER Enhanced Playback",
-                &ss, nullptr, nullptr, &err
-            );
-            if (!s_playback) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                continue;
-            }
-        }
-
-        // 4. Read one chunk from virtual sink monitor
-        if (pa_simple_read(s_record, buffer.data(), samplesPerChunk * sizeof(float), &err) < 0) {
-            pa_simple_free(s_record);
-            s_record = nullptr;
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
-            continue;
-        }
-
-        // 5. ViPER DSP processing
-        {
-            std::lock_guard<std::mutex> lock(m_engineMutex);
-            if (m_engine) {
-                m_engine->Process(buffer, framesPerChunk);
-            }
-        }
-
-        // 6. Write processed audio directly to hardware
-        if (s_playback) {
-            if (pa_simple_write(s_playback, buffer.data(), samplesPerChunk * sizeof(float), &err) < 0) {
-                pa_simple_free(s_playback);
-                s_playback = nullptr;
-            }
-        }
-    }
-
-    if (s_record)   pa_simple_free(s_record);
-    if (s_playback) pa_simple_free(s_playback);
 }

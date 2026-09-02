@@ -12,8 +12,14 @@ static void cleanupPulseModule() {
     system("for id in $(pactl list modules short 2>/dev/null | grep -iE 'ViPER4Linux' | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
 }
 
-static void signalHandler(int sig) {
+static void cleanupEverything() {
     cleanupPulseModule();
+    // Cleanly stop AudioEngine to restore all client links to hardware and destroy filter
+    ViPERState::instance()->stopEngine();
+}
+
+static void signalHandler(int sig) {
+    cleanupEverything();
     _exit(0);
 }
 
@@ -26,14 +32,15 @@ int main(int argc, char *argv[])
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
     signal(SIGHUP, signalHandler);
-    std::atexit(cleanupPulseModule);
+    std::atexit(cleanupEverything);
 
     QApplication app(argc, argv);
     app.setOrganizationName("ViPER");
     app.setOrganizationDomain("viper.audio");
     app.setApplicationName("ViPER4Linux");
 
-    QObject::connect(&app, &QCoreApplication::aboutToQuit, &cleanupPulseModule);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &cleanupEverything);
+
 
     // Register our custom types
     qmlRegisterType<EqGraphItem>("ViPER4Linux", 1, 0, "EqGraphItem");

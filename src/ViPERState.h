@@ -254,6 +254,7 @@ public:
 
     bool loadConvolverKernel(const QString &filePath);
     bool loadDdcProfile(const QString &filePath);
+    Q_INVOKABLE void stopEngine();
 
 private:
     void initDefaults();

@@ -40,6 +40,11 @@ add_subdirectory(../ViPER4Mac/ViPERDSP ViPERDSP)
 # Force-include the missing headers into ViPERDSP compilation
 target_compile_options(ViPERDSP PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/force_includes.h)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PIPEWIRE REQUIRED IMPORTED_TARGET libpipewire-0.3 libspa-0.2)
+
+target_include_directories(ViPER4LinuxApp PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
+
 target_link_libraries(ViPER4LinuxApp
     PRIVATE
         Qt6::Core
@@ -48,6 +53,6 @@ target_link_libraries(ViPER4LinuxApp
         Qt6::Quick
         Qt6::Widgets
         ViPERDSP
-        pulse
-        pulse-simple
+        PkgConfig::PIPEWIRE
 )
+
