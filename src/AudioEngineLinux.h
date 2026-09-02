@@ -10,8 +10,6 @@
 
 class ViPER;
 struct pa_simple;
-class QProcess;
-class QTimer;
 
 class AudioEngineLinux : public QObject {
     Q_OBJECT
@@ -31,18 +29,8 @@ public:
 
     std::mutex& engineMutex() { return m_engineMutex; }
 
-    // Volume & Mute Synchronization
-    QString getSinkVolume(const QString &sinkName);
-    bool getSinkMute(const QString &sinkName);
-    void setSinkVolume(const QString &sinkName, const QString &volume);
-    void setSinkMute(const QString &sinkName, bool muted);
-    void syncVolumes();
-
 signals:
     void statusChanged(bool active, const QString &statusText);
-
-private slots:
-    void handleSubscriptionOutput();
 
 private:
     void runAudioLoop();
@@ -59,15 +47,7 @@ private:
     std::atomic<bool> m_masterEnabled{true};
 
     QString m_virtualSinkModuleId;
-    QString m_outputSinkModuleId;   // ViPER4Linux_Out sink
-    QString m_loopbackModuleId;     // module-loopback Out.monitor → hardware
     QString m_hardwareOutputSink;
 
     std::thread m_workerThread;
-
-    QProcess *m_subscribeProc = nullptr;
-    QTimer *m_volumeSyncTimer = nullptr;
-    QString m_lastSyncedVolume;
-    bool m_lastSyncedMute = false;
-    std::atomic<bool> m_isSyncing{false};
 };
