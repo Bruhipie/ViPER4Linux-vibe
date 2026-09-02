@@ -51,6 +51,9 @@ class ViPERState : public QObject {
     VIPER_PROP(QVariantList, equalizerBands, setEqualizerBandsProperty, QVariantList())
     VIPER_PROP(QString, equalizerPresetName, setEqualizerPresetName, "Flat")
     VIPER_PROP(QStringList, presetList, setPresetList, QStringList())
+    Q_PROPERTY(QStringList equalizerBandLabels READ equalizerBandLabels NOTIFY equalizerBandCountChanged)
+    Q_PROPERTY(QStringList equalizerPresetNames READ presetList NOTIFY presetListChanged)
+    QStringList equalizerBandLabels() const;
 
     // ViPER Bass
     VIPER_PROP(bool, viperBassEnabled, setViperBassEnabled, false)

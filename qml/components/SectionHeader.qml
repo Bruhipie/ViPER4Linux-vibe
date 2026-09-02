@@ -42,9 +42,9 @@ Rectangle {
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.title
-                font.pixelSize: 14
+                font.pixelSize: 13
                 font.weight: root.checked ? Font.DemiBold : Font.Normal
-                color: root.checked ? "#DFD4FF" : "#8A879E"
+                color: root.checked ? "#F1F3F7" : "#8B92A2"
                 elide: Text.ElideRight
             }
 
@@ -55,7 +55,7 @@ Rectangle {
                 text: "›"
                 font.pixelSize: 18
                 font.bold: true
-                color: root.checked ? "#C2ABFF" : "#5A576E"
+                color: root.checked ? "#00D2B4" : "#555A68"
                 rotation: root.expanded ? 90 : 0
 
                 Behavior on rotation {
@@ -77,7 +77,7 @@ Rectangle {
     Rectangle {
         width: parent.width
         height: 1
-        color: "#1E1C2B"
+        color: "#22242D"
         anchors.bottom: parent.bottom
     }
 }

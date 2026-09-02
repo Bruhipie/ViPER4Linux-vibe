@@ -200,6 +200,15 @@ void ViPERState::setEqualizerBandCount(int count) {
     }
 }
 
+QStringList ViPERState::equalizerBandLabels() const {
+    if (m_equalizerBandCount == 15) {
+        return { "25", "40", "63", "100", "160", "250", "400", "630", "1k", "1.6k", "2.5k", "4k", "6.3k", "10k", "16k" };
+    } else if (m_equalizerBandCount == 31) {
+        return { "20", "25", "31.5", "40", "50", "63", "80", "100", "125", "160", "200", "250", "315", "400", "500", "630", "800", "1k", "1.25k", "1.6k", "2k", "2.5k", "3.15k", "4k", "5k", "6.3k", "8k", "10k", "12.5k", "16k", "20k" };
+    }
+    return { "31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k" };
+}
+
 void ViPERState::setEqBandLevel(int bandIndex, qreal level) {
     if (bandIndex >= 0 && bandIndex < m_equalizerBands.size()) {
         m_equalizerBands[bandIndex] = level;

@@ -31,6 +31,8 @@ qt_add_qml_module(ViPER4LinuxApp
         qml/components/CustomSegmentedPicker.qml
         qml/components/DriverStatusModal.qml
         qml/components/EqBandSlider.qml
+        qml/components/SidebarItem.qml
+        qml/components/AnimatedSection.qml
 )
 
 # Add ViPERDSP without modifying its own directory
