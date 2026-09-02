@@ -20,9 +20,9 @@ ApplicationWindow {
         id: convolverDialog
         title: "Select Impulse Response (WAV / IRS)"
         nameFilters: ["Audio IR files (*.wav *.irs)", "All files (*)"]
+        currentFolder: "file://" + viperState.defaultIrsFolder
         onAccepted: {
-            var path = convolverDialog.selectedFile.toString().replace("file://", "")
-            viperState.selectConvolverKernel(path)
+            viperState.selectConvolverKernel(convolverDialog.selectedFile.toString())
         }
     }
 
@@ -31,8 +31,7 @@ ApplicationWindow {
         title: "Select ViPER-DDC Profile (.vdc)"
         nameFilters: ["ViPER-DDC files (*.vdc)", "All files (*)"]
         onAccepted: {
-            var path = ddcDialog.selectedFile.toString().replace("file://", "")
-            viperState.selectDdcProfile(path)
+            viperState.selectDdcProfile(ddcDialog.selectedFile.toString())
         }
     }
 

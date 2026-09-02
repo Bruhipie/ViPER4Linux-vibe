@@ -243,8 +243,14 @@ public:
     Q_INVOKABLE void loadPreset(const QString &name);
     Q_INVOKABLE void deletePreset(const QString &name);
 
+    Q_PROPERTY(QString defaultIrsFolder READ defaultIrsFolder CONSTANT)
+    QString defaultIrsFolder() const;
+
     Q_INVOKABLE void selectConvolverKernel(const QString &filePath);
     Q_INVOKABLE void selectDdcProfile(const QString &filePath);
+
+    bool loadConvolverKernel(const QString &filePath);
+    bool loadDdcProfile(const QString &filePath);
 
 private:
     void initDefaults();
@@ -257,6 +263,8 @@ private:
     void syncBass();
     void syncBassMono();
     void syncClarity();
+    void syncConvolver();
+    void syncDdc();
     void syncReverb();
     void syncSurround();
     void syncDiffSurround();

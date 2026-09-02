@@ -3,6 +3,8 @@
 #include <QProcess>
 #include <QTimer>
 #include <QDir>
+#include <QUrl>
+#include <QTextStream>
 #include <QStandardPaths>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -12,6 +14,7 @@
 
 #include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
 #include "../ViPER4Mac/ViPERDSP/include/ViPERParams.h"
+#include "../ViPER4Mac/ViPERDSP/viper/utils/WavReader.h"
 
 ViPERState* ViPERState::instance() {
     static ViPERState state;
@@ -322,14 +325,151 @@ void ViPERState::deletePreset(const QString &name) {
     emit userPresetFilesChanged();
 }
 
+QString ViPERState::defaultIrsFolder() const {
+    QString irsDir = QDir::homePath() + "/.local/share/easyeffects/irs";
+    if (QDir(irsDir).exists()) {
+        return irsDir;
+    }
+    return QDir::homePath();
+}
+
 void ViPERState::selectConvolverKernel(const QString &filePath) {
-    setConvolutionKernelPath(filePath);
-    setConvolutionEnabled(!filePath.isEmpty());
+    QString localPath = filePath;
+    if (localPath.startsWith("file://")) {
+        localPath = QUrl(filePath).toLocalFile();
+    } else if (localPath.contains("%")) {
+        localPath = QUrl::fromPercentEncoding(localPath.toUtf8());
+    }
+
+    setConvolutionKernelPath(localPath);
+    if (!localPath.isEmpty()) {
+        bool ok = loadConvolverKernel(localPath);
+        setConvolutionEnabled(ok);
+    } else {
+        setConvolutionEnabled(false);
+        if (m_engine) m_engine->UnloadConvolverKernel();
+    }
+    syncConvolver();
+}
+
+bool ViPERState::loadConvolverKernel(const QString &filePath) {
+    if (!m_engine || filePath.isEmpty()) return false;
+
+    QByteArray pathBytes = filePath.toUtf8();
+    WavData wav{};
+    if (!ReadWavFile(pathBytes.constData(), &wav)) {
+        qWarning() << "[ViPER][Convolver] Failed to read impulse response file:" << filePath;
+        m_engine->UnloadConvolverKernel();
+        return false;
+    }
+
+    if (wav.samples == nullptr || wav.frame_count < 16 || wav.channels < 1 || wav.channels > 2) {
+        qWarning() << "[ViPER][Convolver] Unsupported channel count or frame count:" << wav.channels << wav.frame_count;
+        if (wav.samples) delete[] wav.samples;
+        m_engine->UnloadConvolverKernel();
+        return false;
+    }
+
+    static uint32_t s_kernelIdCounter = 1;
+    uint32_t kernelId = ++s_kernelIdCounter;
+
+    auto res = m_engine->LoadConvolverKernel(wav.samples, wav.frame_count, wav.channels, kernelId);
+    delete[] wav.samples;
+
+    if (!res.has_value()) {
+        qWarning() << "[ViPER][Convolver] LoadConvolverKernel failed for:" << filePath;
+        return false;
+    }
+
+    qDebug() << "[ViPER][Convolver] Successfully loaded kernel:" << filePath
+             << "frames=" << wav.frame_count << "ch=" << wav.channels << "sr=" << wav.sample_rate;
+    return true;
+}
+
+void ViPERState::syncConvolver() {
+    if (!m_engine) return;
+
+    viper::ConvolverParams p;
+    p.enable = m_isEnabled && m_convolutionEnabled && !m_convolutionKernelPath.isEmpty();
+    p.cross_channel = static_cast<float>(m_convolutionCrossChannel) / 100.0f;
+    m_engine->ApplyConvolver(p);
 }
 
 void ViPERState::selectDdcProfile(const QString &filePath) {
-    setDdcFilePath(filePath);
-    setDdcEnabled(!filePath.isEmpty());
+    QString localPath = filePath;
+    if (localPath.startsWith("file://")) {
+        localPath = QUrl(filePath).toLocalFile();
+    } else if (localPath.contains("%")) {
+        localPath = QUrl::fromPercentEncoding(localPath.toUtf8());
+    }
+
+    setDdcFilePath(localPath);
+    if (!localPath.isEmpty()) {
+        bool ok = loadDdcProfile(localPath);
+        setDdcEnabled(ok);
+    } else {
+        setDdcEnabled(false);
+        if (m_engine) m_engine->LoadDdcCoefficients(nullptr, nullptr, 0);
+    }
+    syncDdc();
+}
+
+bool ViPERState::loadDdcProfile(const QString &filePath) {
+    if (!m_engine || filePath.isEmpty()) return false;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "[ViPER][DDC] Failed to open DDC file:" << filePath;
+        return false;
+    }
+
+    QTextStream in(&file);
+    QVector<float> coeffs44100;
+    QVector<float> coeffs48000;
+
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.startsWith("SR_44100:", Qt::CaseInsensitive)) {
+            QString str = line.mid(9).trimmed();
+            QStringList tokens = str.split(',', Qt::SkipEmptyParts);
+            for (const QString &t : tokens) {
+                bool ok = false;
+                float val = t.trimmed().toFloat(&ok);
+                if (ok) coeffs44100.append(val);
+            }
+        } else if (line.startsWith("SR_48000:", Qt::CaseInsensitive)) {
+            QString str = line.mid(9).trimmed();
+            QStringList tokens = str.split(',', Qt::SkipEmptyParts);
+            for (const QString &t : tokens) {
+                bool ok = false;
+                float val = t.trimmed().toFloat(&ok);
+                if (ok) coeffs48000.append(val);
+            }
+        }
+    }
+    file.close();
+
+    if (coeffs44100.isEmpty() || coeffs48000.isEmpty() ||
+        coeffs44100.size() != coeffs48000.size() || (coeffs44100.size() % 5 != 0)) {
+        qWarning() << "[ViPER][DDC] Invalid coefficients format in:" << filePath;
+        return false;
+    }
+
+    uint32_t sectionCount = coeffs44100.size() / 5;
+    const viper::BiquadSection *sec44 = reinterpret_cast<const viper::BiquadSection *>(coeffs44100.constData());
+    const viper::BiquadSection *sec48 = reinterpret_cast<const viper::BiquadSection *>(coeffs48000.constData());
+
+    m_engine->LoadDdcCoefficients(sec44, sec48, sectionCount);
+    qDebug() << "[ViPER][DDC] Loaded DDC profile successfully:" << filePath << "sections=" << sectionCount;
+    return true;
+}
+
+void ViPERState::syncDdc() {
+    if (!m_engine) return;
+
+    viper::DdcParams p;
+    p.enable = m_isEnabled && m_ddcEnabled && !m_ddcFilePath.isEmpty();
+    m_engine->ApplyDdc(p);
 }
 
 void ViPERState::onPropertyChanged(const char *propName) {
@@ -379,6 +519,10 @@ void ViPERState::onPropertyChanged(const char *propName) {
         syncLufs();
     } else if (name.startsWith("psychoBass")) {
         syncPsychoBass();
+    } else if (name.startsWith("convolution")) {
+        syncConvolver();
+    } else if (name.startsWith("ddc")) {
+        syncDdc();
     } else if (name == "speakerCorrectionEnabled") {
         m_engine->ApplySpeakerCorrection({ m_speakerCorrectionEnabled });
     }
@@ -580,4 +724,6 @@ void ViPERState::syncAll() {
     syncPlaybackGain();
     syncLufs();
     syncPsychoBass();
+    syncConvolver();
+    syncDdc();
 }
