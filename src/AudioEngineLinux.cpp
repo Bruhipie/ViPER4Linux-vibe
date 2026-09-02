@@ -11,8 +11,11 @@
 
 #include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
 
-static const char *kVirtualSinkName = "ViPER4Linux_Sink";
+static const char *kVirtualSinkName    = "ViPER4Linux_Sink";
 static const char *kVirtualMonitorName = "ViPER4Linux_Sink.monitor";
+static const char *kOutputSinkName     = "ViPER4Linux_Out";
+static const char *kOutputMonitorName  = "ViPER4Linux_Out.monitor";
+
 
 AudioEngineLinux::AudioEngineLinux(ViPER *engine, QObject *parent)
     : QObject(parent), m_engine(engine)
@@ -121,42 +124,65 @@ void AudioEngineLinux::setSinkMute(const QString &sinkName, bool muted) {
 }
 
 void AudioEngineLinux::createVirtualSink() {
-    // 1. Capture current hardware sink's volume and mute BEFORE creating virtual sink
-    // 1. Unload all previous instances cleanly
-    system("for id in $(pactl list modules short 2>/dev/null | grep -i ViPER4Linux_Sink | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
+    // Topology (matches EasyEffects patchbay):
+    //   apps → ViPER4Linux_Sink → [ViPER DSP thread reads monitor] →
+    //          writes to ViPER4Linux_Out → module-loopback → hardware
 
-    // 2. Load module-null-sink
-    QProcess procLoad;
-    procLoad.start("pactl", QStringList() 
-        << "load-module" << "module-null-sink" 
-        << QString("sink_name=%1").arg(kVirtualSinkName)
-        << "sink_properties=device.description=ViPER4Linux_Virtual_Sink"
-    );
-    if (procLoad.waitForFinished(2000)) {
-        m_virtualSinkModuleId = QString::fromUtf8(procLoad.readAllStandardOutput()).trimmed();
+    // 1. Tear down any leftover modules from previous run
+    system("for id in $(pactl list modules short 2>/dev/null | grep -iE 'ViPER4Linux' | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
+
+    auto loadSink = [](const char *name, const char *desc) -> QString {
+        QProcess p;
+        p.start("pactl", QStringList()
+            << "load-module" << "module-null-sink"
+            << QString("sink_name=%1").arg(name)
+            << QString("sink_properties=device.description=%1").arg(desc));
+        p.waitForFinished(2000);
+        return QString::fromUtf8(p.readAllStandardOutput()).trimmed();
+    };
+
+    // 2. Input sink — where all apps play to
+    m_virtualSinkModuleId = loadSink(kVirtualSinkName, "ViPER4Linux_Input");
+    setSinkVolume(kVirtualSinkName, "100%");
+
+    // 3. Output sink — where ViPER writes processed audio
+    m_outputSinkModuleId = loadSink(kOutputSinkName, "ViPER4Linux_Output");
+    setSinkVolume(kOutputSinkName, "100%");
+
+    // 4. Loopback: Out.monitor → hardware (creates the visible connection in Helvum)
+    QString hwSink = getHardwareOutputSink();
+    if (!hwSink.isEmpty()) {
+        QProcess lp;
+        lp.start("pactl", QStringList()
+            << "load-module" << "module-loopback"
+            << QString("source=%1").arg(kOutputMonitorName)
+            << QString("sink=%1").arg(hwSink)
+            << "latency_msec=30"
+            << "adjust_time=0");
+        lp.waitForFinished(2000);
+        m_loopbackModuleId = QString::fromUtf8(lp.readAllStandardOutput()).trimmed();
     }
 
-    // 3. Always pin virtual sink at 100% — volume control only touches the hardware device
-    setSinkVolume(kVirtualSinkName, "100%");
     m_lastSyncedVolume = "100%";
 }
 
+
 void AudioEngineLinux::removeVirtualSink() {
     if (!m_hardwareOutputSink.isEmpty()) {
-        // Ensure hardware sink has latest volume before restoring
-        QString vVol = getSinkVolume(kVirtualSinkName);
-        if (!vVol.isEmpty()) {
-            setSinkVolume(m_hardwareOutputSink, vVol);
-        }
-        setSinkMute(m_hardwareOutputSink, getSinkMute(kVirtualSinkName));
-
         setDefaultSink(m_hardwareOutputSink);
         moveActiveStreamsTo(m_hardwareOutputSink);
     }
 
-    system("for id in $(pactl list modules short 2>/dev/null | grep -i ViPER4Linux_Sink | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
-    m_virtualSinkModuleId.clear();
+    // Unload loopback first, then sinks
+    auto unloadModule = [](const QString &id) {
+        if (!id.isEmpty())
+            QProcess::execute("pactl", QStringList() << "unload-module" << id);
+    };
+    unloadModule(m_loopbackModuleId);   m_loopbackModuleId.clear();
+    unloadModule(m_outputSinkModuleId); m_outputSinkModuleId.clear();
+    unloadModule(m_virtualSinkModuleId); m_virtualSinkModuleId.clear();
 }
+
 
 void AudioEngineLinux::moveActiveStreamsTo(const QString &targetSink) {
     if (targetSink.isEmpty()) return;
@@ -354,15 +380,11 @@ void AudioEngineLinux::runAudioLoop() {
         }
 
         // 3. If master toggle is ON (enabled):
-        // Ensure s_playback is open and locked strictly to physical hardware sink
+        // Write to ViPER4Linux_Out (which loopback forwards to hardware)
         if (!s_playback) {
-            QString hwSink = getHardwareOutputSink();
-            QByteArray hwBytes = hwSink.toUtf8();
-            const char *targetDev = hwBytes.isEmpty() ? nullptr : hwBytes.constData();
-
             s_playback = pa_simple_new(
                 nullptr, "ViPER4Linux", PA_STREAM_PLAYBACK,
-                targetDev, "ViPER Enhanced Playback",
+                kOutputSinkName, "ViPER Enhanced Playback",
                 &ss, nullptr, nullptr, &err
             );
             if (!s_playback) {

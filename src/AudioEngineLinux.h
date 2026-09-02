@@ -59,6 +59,8 @@ private:
     std::atomic<bool> m_masterEnabled{true};
 
     QString m_virtualSinkModuleId;
+    QString m_outputSinkModuleId;   // ViPER4Linux_Out sink
+    QString m_loopbackModuleId;     // module-loopback Out.monitor → hardware
     QString m_hardwareOutputSink;
 
     std::thread m_workerThread;

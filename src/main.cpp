@@ -9,7 +9,7 @@
 #include "EqGraphItem.h"
 
 static void cleanupPulseModule() {
-    system("for id in $(pactl list modules short 2>/dev/null | grep -i ViPER4Linux_Sink | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
+    system("for id in $(pactl list modules short 2>/dev/null | grep -iE 'ViPER4Linux' | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
 }
 
 static void signalHandler(int sig) {
