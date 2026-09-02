@@ -9,18 +9,12 @@ Item {
     width: parent.width
     clip: true
 
-    // Animate height and opacity smoothly
+    // Height is set IMMEDIATELY (no Behavior here) so the PARENT card's
+    // Behavior on height drives the single smooth expand/collapse animation.
     height: expanded ? innerContainer.implicitHeight : 0
+
+    // Only opacity fades in/out
     opacity: expanded ? 1.0 : 0.0
-    visible: height > 0 || opacity > 0
-
-    Behavior on height {
-        NumberAnimation {
-            duration: 240
-            easing.type: Easing.OutCubic
-        }
-    }
-
     Behavior on opacity {
         NumberAnimation {
             duration: 200

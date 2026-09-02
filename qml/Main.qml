@@ -348,6 +348,7 @@ ApplicationWindow {
                         border.color: "#252731"
                         border.width: 1
 
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -456,6 +457,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -518,6 +520,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -580,6 +583,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -651,6 +655,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -713,6 +718,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -775,6 +781,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -819,6 +826,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -863,6 +871,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -943,6 +952,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1034,6 +1044,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1122,6 +1133,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1201,6 +1213,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1237,6 +1250,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1290,6 +1304,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1342,6 +1357,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1378,6 +1394,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1421,6 +1438,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1474,6 +1492,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1578,6 +1597,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {
@@ -1640,6 +1660,7 @@ ApplicationWindow {
                         color: "#18191E"
                         border.color: "#252731"
                         border.width: 1
+                        clip: true
                         Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
                         Column {

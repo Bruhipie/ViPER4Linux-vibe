@@ -122,18 +122,10 @@ void AudioEngineLinux::setSinkMute(const QString &sinkName, bool muted) {
 
 void AudioEngineLinux::createVirtualSink() {
     // 1. Capture current hardware sink's volume and mute BEFORE creating virtual sink
-    QString hwSink = getHardwareOutputSink();
-    QString initialVol;
-    bool initialMute = false;
-    if (!hwSink.isEmpty()) {
-        initialVol = getSinkVolume(hwSink);
-        initialMute = getSinkMute(hwSink);
-    }
-
-    // 2. Unload all previous instances cleanly
+    // 1. Unload all previous instances cleanly
     system("for id in $(pactl list modules short 2>/dev/null | grep -i ViPER4Linux_Sink | awk '{print $1}'); do pactl unload-module $id 2>/dev/null; done");
 
-    // 3. Load module-null-sink
+    // 2. Load module-null-sink
     QProcess procLoad;
     procLoad.start("pactl", QStringList() 
         << "load-module" << "module-null-sink" 
@@ -144,13 +136,9 @@ void AudioEngineLinux::createVirtualSink() {
         m_virtualSinkModuleId = QString::fromUtf8(procLoad.readAllStandardOutput()).trimmed();
     }
 
-    // 4. Immediately initialize virtual sink with identical volume and mute as the hardware sink
-    if (!initialVol.isEmpty()) {
-        setSinkVolume(kVirtualSinkName, initialVol);
-        m_lastSyncedVolume = initialVol;
-    }
-    setSinkMute(kVirtualSinkName, initialMute);
-    m_lastSyncedMute = initialMute;
+    // 3. Always pin virtual sink at 100% — volume control only touches the hardware device
+    setSinkVolume(kVirtualSinkName, "100%");
+    m_lastSyncedVolume = "100%";
 }
 
 void AudioEngineLinux::removeVirtualSink() {
@@ -206,34 +194,16 @@ void AudioEngineLinux::setMasterEnabled(bool enabled) {
     m_masterEnabled = enabled;
 
     if (m_masterEnabled) {
-        // Sync hardware volume to virtual sink before switching
-        QString hwSink = getHardwareOutputSink();
-        if (!hwSink.isEmpty()) {
-            QString hwVol = getSinkVolume(hwSink);
-            if (!hwVol.isEmpty()) {
-                setSinkVolume(kVirtualSinkName, hwVol);
-                m_lastSyncedVolume = hwVol;
-            }
-            bool hwMute = getSinkMute(hwSink);
-            setSinkMute(kVirtualSinkName, hwMute);
-            m_lastSyncedMute = hwMute;
-        }
+        // Lock virtual sink to 100% again (it's always at 100% when ViPER is active)
+        setSinkVolume(kVirtualSinkName, "100%");
+        setSinkMute(kVirtualSinkName, false);
+        m_lastSyncedVolume = "100%";
 
         setDefaultSink(kVirtualSinkName);
         moveActiveStreamsTo(kVirtualSinkName);
         emit statusChanged(true, "Processing Live Audio");
     } else {
         if (!m_hardwareOutputSink.isEmpty()) {
-            // Sync virtual sink volume to hardware sink before switching
-            QString vVol = getSinkVolume(kVirtualSinkName);
-            if (!vVol.isEmpty()) {
-                setSinkVolume(m_hardwareOutputSink, vVol);
-                m_lastSyncedVolume = vVol;
-            }
-            bool vMute = getSinkMute(kVirtualSinkName);
-            setSinkMute(m_hardwareOutputSink, vMute);
-            m_lastSyncedMute = vMute;
-
             setDefaultSink(m_hardwareOutputSink);
             moveActiveStreamsTo(m_hardwareOutputSink);
         }
@@ -256,44 +226,26 @@ void AudioEngineLinux::syncVolumes() {
     QString hwSink = getHardwareOutputSink();
     if (hwSink.isEmpty()) return;
 
-    QString vVirtual = getSinkVolume(kVirtualSinkName);
-    QString vHw = getSinkVolume(hwSink);
-    if (vVirtual.isEmpty() || vHw.isEmpty()) return;
-
-    bool mVirtual = getSinkMute(kVirtualSinkName);
-    bool mHw = getSinkMute(hwSink);
-
-    // If already identical, nothing to do
-    if (vVirtual == vHw && mVirtual == mHw) {
-        m_lastSyncedVolume = vVirtual;
-        m_lastSyncedMute = mVirtual;
-        return;
-    }
-
     m_isSyncing.store(true);
 
-    // 1. Volume Synchronization
-    if (vVirtual != m_lastSyncedVolume) {
-        // User changed virtual sink (keyboard volume keys / KDE OSD) -> sync to hardware
+    // Strategy: ViPER4Linux_Sink is ALWAYS locked at 100%.
+    // Volume keys change the virtual sink; we detect this, apply the new level
+    // to the hardware output device, and immediately reset the virtual sink back to 100%.
+    // This way the system volume OSD reflects the user's intent while virtual stays at unity.
+
+    QString vVirtual = getSinkVolume(kVirtualSinkName);
+    if (!vVirtual.isEmpty() && vVirtual != "100%") {
+        // User pressed volume keys — apply their intent directly to hardware
         setSinkVolume(hwSink, vVirtual);
-        m_lastSyncedVolume = vVirtual;
-    } else if (vHw != m_lastSyncedVolume) {
-        // User changed hardware sink (bluetooth controls / settings) -> sync to virtual
-        setSinkVolume(kVirtualSinkName, vHw);
-        m_lastSyncedVolume = vHw;
-    } else {
-        // Fallback default to virtual sink
-        setSinkVolume(hwSink, vVirtual);
-        m_lastSyncedVolume = vVirtual;
+        // Lock virtual sink back to 100%
+        setSinkVolume(kVirtualSinkName, "100%");
     }
 
-    // 2. Mute Synchronization
-    if (mVirtual != m_lastSyncedMute) {
-        setSinkMute(hwSink, mVirtual);
-        m_lastSyncedMute = mVirtual;
-    } else if (mHw != m_lastSyncedMute) {
-        setSinkMute(kVirtualSinkName, mHw);
-        m_lastSyncedMute = mHw;
+    // Mute: if user muted the virtual sink, apply mute to hardware and unmute virtual
+    bool mVirtual = getSinkMute(kVirtualSinkName);
+    if (mVirtual) {
+        setSinkMute(hwSink, true);
+        setSinkMute(kVirtualSinkName, false);
     }
 
     m_isSyncing.store(false);
