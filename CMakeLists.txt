@@ -36,7 +36,7 @@ qt_add_qml_module(ViPER4LinuxApp
 )
 
 # Add ViPERDSP without modifying its own directory
-add_subdirectory(../ViPER4Mac/ViPERDSP ViPERDSP)
+add_subdirectory(ViPERDSP)
 # Force-include the missing headers into ViPERDSP compilation
 target_compile_options(ViPERDSP PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/force_includes.h)
 target_compile_options(ViPER4LinuxApp PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/force_includes.h)

@@ -13,7 +13,7 @@
 #include <pipewire/thread-loop.h>
 #include <spa/param/audio/format-utils.h>
 
-#include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
+#include "ViPERDSP/viper/ViPER.h"
 
 AudioEngineLinux::AudioEngineLinux(ViPER *engine, QObject *parent)
     : QObject(parent), m_engine(engine)

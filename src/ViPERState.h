@@ -8,7 +8,7 @@
 #include <QTimer>
 #include <memory>
 #include <mutex>
-#include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
+#include "ViPERDSP/viper/ViPER.h"
 
 #define VIPER_PROP(type, name, setter, default_val) \
     Q_PROPERTY(type name READ name WRITE setter NOTIFY name##Changed) \

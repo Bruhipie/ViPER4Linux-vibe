@@ -14,9 +14,9 @@
 #include <cmath>
 #include <iostream>
 
-#include "../ViPER4Mac/ViPERDSP/viper/ViPER.h"
-#include "../ViPER4Mac/ViPERDSP/include/ViPERParams.h"
-#include "../ViPER4Mac/ViPERDSP/viper/utils/WavReader.h"
+#include "ViPERDSP/viper/ViPER.h"
+#include "ViPERDSP/include/ViPERParams.h"
+#include "ViPERDSP/viper/utils/WavReader.h"
 
 ViPERState* ViPERState::instance() {
     static ViPERState state;
